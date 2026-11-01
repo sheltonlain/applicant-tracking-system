@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Pipeline view</title>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+  .drop-ok  { outline: 2px dashed var(--color-success); background: color-mix(in oklab, var(--color-success) 10%, transparent) !important; }
+  .drop-bad { opacity: .35; }
+  .drop-hover { outline: 3px solid var(--color-success); }
+</style>
+</head>
+<body class="bg-base-200 min-h-screen pb-24">
+
+<!-- ===================== SHARED DATA + RULES (decisions 4–6) ===================== -->
+<script>
+const STAGES = { APPLIED: "Applied", SCREENING: "Screening", INTERVIEW: "Interview", FINAL_REVIEW: "Final Review",
+  OFFER: "Offer", HIRED: "Hired", REJECTED: "Rejected", WITHDRAWN: "Withdrawn" };
+const ACTIVE = ["APPLIED", "SCREENING", "INTERVIEW", "FINAL_REVIEW", "OFFER"];
+const CLOSED = ["REJECTED", "WITHDRAWN"];
+const FINAL = ["HIRED", ...CLOSED];
+
+const JOBS = [
+  { id: "j1", title: "Data Analyst", open: true },
+  { id: "j2", title: "Marketing Coordinator", open: true },
+  { id: "j3", title: "Junior Developer", open: false },
+];
+
+const seed = () => [
+  [1, "Ana Lopez", "j1", "APPLIED", "Company Website"], [2, "Ben Okafor", "j1", "APPLIED", "Job Board · Indeed"],
+  [3, "Chloe Kim", "j1", "SCREENING", "Referral · Maria"], [4, "Dev Patel", "j1", "INTERVIEW", "Job Board · LinkedIn"],
+  [5, "Erin Shaw", "j1", "FINAL_REVIEW", "Company Website"], [6, "Femi Ade", "j1", "OFFER", "Referral · Sam"],
+  [7, "Gia Rossi", "j1", "HIRED", "Job Board · LinkedIn", "OFFER"], [8, "Hana Mori", "j1", "REJECTED", "Other · Career Fair", "INTERVIEW"],
+  [9, "Ivan Petrov", "j1", "WITHDRAWN", "Job Board · Indeed", "SCREENING"],
+  [10, "Jane Doe", "j2", "SCREENING", "Referral · Maria"], [11, "Ana Lopez", "j2", "APPLIED", "Company Website"],
+  [12, "Kofi Mensah", "j2", "INTERVIEW", "Job Board · LinkedIn"],
+  [13, "Leo Park", "j3", "FINAL_REVIEW", "Referral · Sam"], [14, "Mia Chen", "j3", "INTERVIEW", "Company Website"],
+  [15, "Noah Reed", "j3", "REJECTED", "Job Board · Indeed", "SCREENING"],
+].map(([id, name, job, stage, source, prev = null]) => ({ id, name, job, stage, source, prev, movedDay: 0 }));
+
+const Rules = {
+  moves(app) {
+    if (app.stage === "HIRED") return [];
+    if (CLOSED.includes(app.stage)) return app.prev ? [{ to: app.prev, kind: "reopen" }] : [];
+    const i = ACTIVE.indexOf(app.stage);
+    const out = [{ to: i < ACTIVE.length - 1 ? ACTIVE[i + 1] : "HIRED", kind: "next" }];
+    if (i > 0) out.push({ to: ACTIVE[i - 1], kind: "back" });
+    out.push({ to: "REJECTED", kind: "reject" }, { to: "WITHDRAWN", kind: "withdraw" });
+    return out;
+  },
+  needsReason: (kind) => ["reject", "withdraw", "reopen"].includes(kind),
+  move(apps, id, to, reason) {
+    const app = apps.find(a => a.id === id);
+    const m = Rules.moves(app).find(x => x.to === to);
+    if (!m) return { error: `Not allowed: ${app.name} can't go from ${STAGES[app.stage]} to ${STAGES[to]}. ${
+      ACTIVE.includes(to) && ACTIVE.includes(app.stage) ? "Only one stage forward or back at a time." : app.stage === "HIRED" ? "Hired is permanent." : ""}` };
+    if (Rules.needsReason(m.kind) && !reason?.trim()) return { error: "A reason is required." };
+    const updated = { ...app, stage: to, prev: CLOSED.includes(to) ? app.stage : null };
+    return { apps: apps.map(a => (a.id === id ? updated : a)),
+      entry: { name: app.name, job: app.job, from: app.stage, to, kind: m.kind, reason: reason || "" } };
+  },
+};
+</script>
+
+<!-- ===================== SHELL ===================== -->
+<div class="navbar bg-base-100 border-b border-base-300 px-6">
+  <div class="flex-1 flex items-center gap-6">
+    <span class="font-bold text-lg">ATS</span>
+    <ul class="menu menu-horizontal px-1 text-sm">
+      <li><a>Candidates</a></li><li><a>Job Openings</a></li><li><a class="menu-active">Pipeline</a></li><li><a>Skills</a></li>
+    </ul>
+  </div>
+  <span class="text-sm text-base-content/60 mr-3">Signed in as Priya</span>
+  <span class="badge badge-warning badge-sm">Throwaway prototype</span>
+</div>
+
+<main class="px-6 py-5 max-w-[1600px] mx-auto">
+  <div id="lastMove" class="mb-4"></div>
+  <div id="view"></div>
+  <div class="grid lg:grid-cols-3 gap-4 mt-6">
+    <div class="card bg-base-100 border border-base-300 lg:col-span-2"><div class="card-body p-4">
+      <h2 class="card-title text-base">How this would work with HTMX</h2><div id="htmxNote" class="text-sm"></div>
+    </div></div>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+      <h2 class="card-title text-base">Stage history <span class="text-xs font-normal text-base-content/50">(shared by all variants)</span></h2>
+      <ul id="activity" class="text-sm space-y-1 max-h-48 overflow-y-auto"></ul>
+      <button class="btn btn-xs btn-ghost self-start" id="reset">Reset all data</button>
+    </div></div>
+  </div>
+</main>
+
+<dialog id="reasonDlg" class="modal">
+  <form class="modal-box" id="reasonForm">
+    <h3 class="font-bold text-lg" id="reasonTitle"></h3>
+    <p class="text-sm text-base-content/70 py-2" id="reasonBody"></p>
+    <textarea class="textarea w-full" id="reasonText" rows="3" placeholder="Reason (required)"></textarea>
+    <div class="text-error text-sm mt-1 hidden" id="reasonErr">Please enter a reason.</div>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" id="reasonCancel">Cancel</button>
+      <button type="submit" class="btn" id="reasonOk"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Variant switcher (not part of the design being judged) -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-neutral-900 text-white px-3 py-2 shadow-xl text-sm" style="font-family: ui-monospace, monospace">
+  <button id="prevV" class="px-2 hover:text-yellow-300">←</button>
+  <span id="vLabel" class="min-w-72 text-center"></span>
+  <button id="nextV" class="px-2 hover:text-yellow-300">→</button>
+</div>
+
+<script>
+const VARIANTS = [
+  { key: "A", name: "Board per job + buttons" },
+  { key: "B", name: "Board per job + drag-and-drop" },
+  { key: "C", name: "One table for all jobs" },
+];
+let apps = seed(), log = [], last = null, swapped = null;
+let vi = Math.max(0, VARIANTS.findIndex(v => v.key === localStorage.getItem("pipelineVariant")));
+let job = "j1";
+let filt = { job: "all", stage: "active", q: "" };
+let pending = null, dragId = null;
+
+const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const jobOf = (id) => JOBS.find(j => j.id === id);
+const KIND = { next: "advanced", back: "moved back", reject: "rejected", withdraw: "withdrawn", reopen: "reopened" };
+const stageBadge = (s) => `<span class="badge badge-sm ${s === "HIRED" ? "badge-success" : s === "REJECTED" ? "badge-error" : s === "WITHDRAWN" ? "badge-neutral" : "badge-ghost"}">${STAGES[s]}</span>`;
+
+/* ---------- shared move flow: reason form / hire confirm ---------- */
+function doMove(id, to, reason, swapTarget) {
+  const r = Rules.move(apps, id, to, reason);
+  if (r.error) { last = { error: r.error }; swapped = null; render(); return; }
+  apps = r.apps; log.unshift(r.entry); last = { ...r.entry, id }; swapped = swapTarget; render();
+}
+function requestMove(id, to, swapTarget) {
+  const app = apps.find(a => a.id === id);
+  const m = Rules.moves(app).find(x => x.to === to);
+  if (!m) { doMove(id, to, "", swapTarget); return; }
+  if (Rules.needsReason(m.kind) || to === "HIRED") {
+    pending = { id, to, swapTarget, needsReason: Rules.needsReason(m.kind) };
+    const verb = { reject: "Reject", withdraw: "Withdraw", reopen: "Reopen" }[m.kind] || "Mark Hired:";
+    document.getElementById("reasonTitle").textContent = `${verb} ${app.name}`;
+    document.getElementById("reasonBody").textContent = m.kind === "reopen"
+      ? `Sends the application back to ${STAGES[to]}, the stage it was closed from.`
+      : to === "HIRED" ? "Hired is permanent. This application can't be moved again." : `For ${jobOf(app.job).title}. You can reopen it later.`;
+    const ta = document.getElementById("reasonText");
+    ta.value = ""; ta.classList.toggle("hidden", !pending.needsReason);
+    document.getElementById("reasonErr").classList.add("hidden");
+    const ok = document.getElementById("reasonOk");
+    ok.textContent = m.kind === "reject" ? "Reject" : m.kind === "withdraw" ? "Mark withdrawn" : m.kind === "reopen" ? "Reopen" : "Mark Hired";
+    ok.className = "btn " + (m.kind === "reject" ? "btn-error" : m.kind === "reopen" ? "btn-info" : to === "HIRED" ? "btn-success" : "btn-neutral");
+    document.getElementById("reasonDlg").showModal();
+    if (pending.needsReason) ta.focus();
+    return;
+  }
+  doMove(id, to, "", swapTarget);
+}
+document.getElementById("reasonForm").onsubmit = (e) => {
+  e.preventDefault();
+  const reason = document.getElementById("reasonText").value;
+  if (pending.needsReason && !reason.trim()) { document.getElementById("reasonErr").classList.remove("hidden"); return; }
+  document.getElementById("reasonDlg").close();
+  const p = pending; pending = null; doMove(p.id, p.to, reason, p.swapTarget);
+};
+document.getElementById("reasonCancel").onclick = () => { document.getElementById("reasonDlg").close(); pending = null; };
+
+const swapRing = (target) => swapped === target ? "ring-2 ring-info ring-offset-2 ring-offset-base-200" : "";
+const swapTag = (target) => swapped === target ? `<div class="text-[11px] text-info font-mono mb-1">↻ re-rendered by HTMX after the last move</div>` : "";
+
+/* ===================== VARIANT A: board per job + buttons ===================== */
+function cardControlsA(app) {
+  const moves = Rules.moves(app);
+  if (!moves.length) return `<div class="text-xs text-base-content/50">🔒 Hired, final</div>`;
+  if (moves[0].kind === "reopen") return `<button class="btn btn-xs btn-outline btn-info" data-move="${app.id}|${moves[0].to}">↺ Reopen…</button>`;
+  const next = moves.find(m => m.kind === "next"), back = moves.find(m => m.kind === "back");
+  return `<div class="flex flex-col gap-1">
+    <button class="btn btn-xs btn-primary w-full" data-move="${app.id}|${next.to}">${next.to === "HIRED" ? "Mark Hired ✓" : `Advance to ${STAGES[next.to]} →`}</button>
+    <div class="flex gap-1">
+      ${back ? `<button class="btn btn-xs btn-ghost flex-1" data-move="${app.id}|${back.to}">← Back</button>` : ""}
+      <div class="dropdown dropdown-end flex-1">
+        <div tabindex="0" role="button" class="btn btn-xs btn-ghost w-full">Close ▾</div>
+        <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-100 rounded-box z-10 w-36 p-1 shadow border border-base-300">
+          <li><a data-move="${app.id}|REJECTED" class="text-error">Reject…</a></li><li><a data-move="${app.id}|WITHDRAWN">Withdrawn…</a></li>
+        </ul>
+      </div>
+    </div></div>`;
+}
+function miniCard(app, controls, extra = "") {
+  const isLast = last && last.id === app.id;
+  return `<div class="card bg-base-100 border ${isLast ? "border-warning" : "border-base-300"} shadow-sm" ${extra}>
+    <div class="card-body p-3 gap-2">
+      <div><div class="font-semibold text-sm">${esc(app.name)}</div><div class="text-xs text-base-content/60">${esc(app.source)}</div>
+      ${FINAL.includes(app.stage) ? `<div class="mt-1 flex items-center gap-1">${stageBadge(app.stage)}${app.prev ? `<span class="text-[11px] text-base-content/50">from ${STAGES[app.prev]}</span>` : ""}</div>` : ""}</div>
+      ${controls}
+    </div></div>`;
+}
+function jobHeader(j, picker) {
+  const mine = apps.filter(a => a.job === j.id), activeN = mine.filter(a => ACTIVE.includes(a.stage)).length;
+  return `<div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+    <div><div class="text-sm text-base-content/60">Pipeline</div>
+      <h1 class="text-2xl font-bold">${j.title} ${j.open ? `<span class="badge badge-success badge-sm align-middle">Open</span>` : `<span class="badge badge-neutral badge-sm align-middle">Closed</span>`}</h1></div>
+    ${picker || ""}
+    </div>
+    ${!j.open && activeN ? `<div class="alert alert-warning py-2 text-sm mb-3">This job is closed, but ${activeN} application(s) are still active. Finish them or close them.</div>` : ""}`;
+}
+function renderA() {
+  const dash = `<div class="grid md:grid-cols-3 gap-3 mb-5">${JOBS.map(j => {
+    const mine = apps.filter(a => a.job === j.id);
+    const counts = ACTIVE.map(s => mine.filter(a => a.stage === s).length);
+    return `<button data-job="${j.id}" class="card bg-base-100 border text-left ${j.id === job ? "border-primary ring-1 ring-primary" : "border-base-300"} hover:border-primary">
+      <div class="card-body p-3 gap-1">
+        <div class="flex justify-between items-center"><span class="font-semibold">${j.title}</span>${j.open ? `<span class="badge badge-success badge-xs">Open</span>` : `<span class="badge badge-neutral badge-xs">Closed</span>`}</div>
+        <div class="flex gap-1 text-[11px] text-base-content/60">${ACTIVE.map((s, i) => `<span class="flex-1 text-center"><b class="block text-base text-base-content">${counts[i]}</b>${STAGES[s].replace("Final Review", "Final")}</span>`).join("")}</div>
+        <div class="text-xs text-base-content/50">${mine.filter(a => a.stage === "HIRED").length} hired · ${mine.filter(a => CLOSED.includes(a.stage)).length} closed</div>
+      </div></button>`;
+  }).join("")}</div>`;
+  const j = jobOf(job), mine = apps.filter(a => a.job === job);
+  const cols = [...ACTIVE.map(s => ({ t: STAGES[s], list: mine.filter(a => a.stage === s) })), { t: "Closed", list: mine.filter(a => FINAL.includes(a.stage)), closed: true }];
+  return `<div class="text-xs uppercase tracking-wide text-base-content/50 mb-2">Home dashboard: open jobs at a glance (click one)</div>${dash}
+    ${jobHeader(j)}
+    <div id="board" class="${swapRing("board")} rounded-box">${swapTag("board")}
+      <div class="grid grid-cols-6 gap-3 overflow-x-auto">${cols.map(c => `
+        <section class="min-w-44 rounded-box ${c.closed ? "bg-base-300/60" : "bg-base-300/30"} p-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 px-1 mb-2 flex justify-between"><span>${c.t}</span><span class="badge badge-ghost badge-xs">${c.list.length}</span></h3>
+          <div class="flex flex-col gap-2">${c.list.map(a => miniCard(a, cardControlsA(a))).join("") || `<div class="text-xs text-base-content/40 py-4 text-center">Empty</div>`}</div>
+        </section>`).join("")}</div>
+    </div>`;
+}
+
+/* ===================== VARIANT B: drag-and-drop board ===================== */
+function renderB() {
+  const j = jobOf(job), mine = apps.filter(a => a.job === job);
+  const picker = `<select class="select select-sm w-64" id="jobPick">${JOBS.map(x => `<option value="${x.id}" ${x.id === job ? "selected" : ""}>${x.title}${x.open ? "" : " (closed)"}</option>`).join("")}</select>`;
+  const cols = Object.keys(STAGES);
+  return `${jobHeader(j, picker)}
+    <div class="text-sm text-base-content/60 mb-2">Drag a card to another column. While you drag, green columns are allowed moves and faded ones are not.</div>
+    <div id="board" class="${swapRing("board")} rounded-box">${swapTag("board")}
+      <div class="grid grid-cols-8 gap-2 overflow-x-auto">${cols.map(s => {
+        const list = mine.filter(a => a.stage === s);
+        return `<section data-drop="${s}" class="min-w-36 rounded-box ${FINAL.includes(s) ? "bg-base-300/60" : "bg-base-300/30"} p-2 min-h-64">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 px-1 mb-2 flex justify-between"><span>${STAGES[s]}</span><span class="badge badge-ghost badge-xs">${list.length}</span></h3>
+          <div class="flex flex-col gap-2">${list.map(a => miniCard(a,
+            `<div class="text-[11px] text-base-content/40">${a.stage === "HIRED" ? "🔒 final" : "⠿ drag to move"}</div>`,
+            `draggable="${a.stage !== "HIRED"}" data-drag="${a.id}" style="cursor:${a.stage === "HIRED" ? "default" : "grab"}"`)).join("")}</div>
+        </section>`;
+      }).join("")}</div>
+    </div>`;
+}
+
+/* ===================== VARIANT C: one table for all jobs ===================== */
+function matches(a) {
+  if (filt.job !== "all" && a.job !== filt.job) return false;
+  if (filt.stage === "active" && !ACTIVE.includes(a.stage)) return false;
+  if (filt.stage === "closed" && !FINAL.includes(a.stage)) return false;
+  if (!["all", "active", "closed"].includes(filt.stage) && a.stage !== filt.stage) return false;
+  if (filt.q && !a.name.toLowerCase().includes(filt.q.toLowerCase())) return false;
+  return true;
+}
+function rowActionsC(app) {
+  const moves = Rules.moves(app);
+  if (!moves.length) return `<span class="text-xs text-base-content/40">🔒 final</span>`;
+  return `<div class="flex gap-1 justify-end">${moves.map(m => {
+    const label = { next: m.to === "HIRED" ? "Hire ✓" : `→ ${STAGES[m.to]}`, back: "←", reject: "Reject…", withdraw: "Withdraw…", reopen: `↺ Reopen…` }[m.kind];
+    const cls = { next: "btn-primary", back: "btn-ghost", reject: "btn-ghost text-error", withdraw: "btn-ghost", reopen: "btn-outline btn-info" }[m.kind];
+    return `<button class="btn btn-xs ${cls}" title="${STAGES[m.to]}" data-move="${app.id}|${m.to}">${label}</button>`;
+  }).join("")}</div>`;
+}
+function renderC() {
+  const scope = apps.filter(a => filt.job === "all" || a.job === filt.job);
+  const chips = [["active", "All active", scope.filter(a => ACTIVE.includes(a.stage)).length],
+    ...ACTIVE.map(s => [s, STAGES[s], scope.filter(a => a.stage === s).length]),
+    ["closed", "Hired / closed", scope.filter(a => FINAL.includes(a.stage)).length], ["all", "Everything", scope.length]];
+  const rows = apps.filter(matches);
+  const hidden = last && !last.error && last.id && !matches(apps.find(a => a.id === last.id));
+  return `<div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+      <div><div class="text-sm text-base-content/60">Pipeline</div><h1 class="text-2xl font-bold">All applications</h1></div>
+      <div class="flex gap-2">
+        <select class="select select-sm w-56" id="fJob"><option value="all">All jobs</option>${JOBS.map(j => `<option value="${j.id}" ${filt.job === j.id ? "selected" : ""}>${j.title}${j.open ? "" : " (closed)"}</option>`).join("")}</select>
+        <input class="input input-sm w-48" id="fQ" placeholder="Search candidate…" value="${esc(filt.q)}">
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-3">${chips.map(([k, l, n]) => `<button data-stagefilter="${k}" class="btn btn-sm ${filt.stage === k ? "btn-primary" : "btn-ghost bg-base-100 border-base-300"}">${l} <span class="badge badge-sm">${n}</span></button>`).join("")}</div>
+    ${hidden ? `<div class="alert alert-info py-2 text-sm mb-3">${esc(last.name)} moved to ${STAGES[last.to]}, so the row no longer matches your filter and is hidden. <button class="btn btn-xs" id="showAll">Show everything</button></div>` : ""}
+    <div id="table" class="${swapRing("table")} rounded-box">${swapTag("table")}
+    <div class="overflow-x-auto bg-base-100 border border-base-300 rounded-box">
+      <table class="table table-sm">
+        <thead><tr><th>Candidate</th><th>Job</th><th>Stage</th><th>Source</th><th class="text-right">Move</th></tr></thead>
+        <tbody>${rows.map(a => { const j = jobOf(a.job); return `<tr class="${last && last.id === a.id ? "bg-warning/10" : ""}">
+          <td class="font-medium">${esc(a.name)}</td>
+          <td>${j.title} ${j.open ? "" : `<span class="badge badge-neutral badge-xs">closed</span>`}</td>
+          <td>${stageBadge(a.stage)} ${a.prev ? `<span class="text-[11px] text-base-content/50">from ${STAGES[a.prev]}</span>` : ""}</td>
+          <td class="text-base-content/60">${esc(a.source)}</td><td>${rowActionsC(a)}</td></tr>`; }).join("")
+          || `<tr><td colspan="5" class="text-center text-base-content/50 py-6">No applications match these filters.</td></tr>`}</tbody>
+      </table></div></div>`;
+}
+
+/* ---------- render ---------- */
+const NOTES = {
+  A: `Each button is <code>hx-post="/applications/&lt;id&gt;/move/"</code> with <code>hx-target="#board"</code>. The server runs the move function and sends back the whole board for this job, so both columns and the counts update together. Reject, Withdraw, and Reopen first load a small reason form (<code>hx-get</code>) into a modal. The dashboard cards are plain links to each job's board.`,
+  B: `Needs an extra JavaScript library (e.g. SortableJS) to detect drops, then sends the same <code>hx-post</code> with the target stage. The server still has to reject illegal drops (try dragging Applied → Offer). Drops into Rejected, Withdrawn, Hired, or a reopen still open the reason form. Drag-and-drop is hard for keyboard and screen-reader users unless you add buttons anyway.`,
+  C: `Each row button posts the move and re-renders the <code>#table</code> section using the current filters (sent along with <code>hx-include</code>). If a row stops matching the filter after a move, it disappears, which is why the info banner exists. Filters are <code>hx-get</code> requests that swap the table. This gives the most cross-job overview, but every job is mixed together.`,
+};
+function render() {
+  const v = VARIANTS[vi];
+  localStorage.setItem("pipelineVariant", v.key);
+  document.getElementById("vLabel").textContent = `${vi + 1}/3 · ${v.key} · ${v.name}`;
+  document.getElementById("lastMove").innerHTML = !last ? `<div class="text-sm text-base-content/50">No moves yet.</div>`
+    : last.error ? `<div class="alert alert-error py-2 text-sm">${esc(last.error)}</div>`
+    : `<div class="alert alert-success py-2 text-sm">${esc(last.name)} (${jobOf(last.job).title}) ${KIND[last.kind]}: ${STAGES[last.from]} → ${STAGES[last.to]}${last.reason ? `, reason: “${esc(last.reason)}”` : ""}</div>`;
+  document.getElementById("view").innerHTML = v.key === "A" ? renderA() : v.key === "B" ? renderB() : renderC();
+  document.getElementById("htmxNote").innerHTML = NOTES[v.key];
+  document.getElementById("activity").innerHTML = log.length ? log.map(e => `<li><b>${esc(e.name)}</b> <span class="text-base-content/60">${jobOf(e.job).title}</span><br>
+    <span class="text-xs">${STAGES[e.from]} → ${STAGES[e.to]}${e.reason ? `, “${esc(e.reason)}”` : ""}</span></li>`).join("") : `<li class="text-base-content/50">Nothing yet.</li>`;
+}
+
+/* ---------- events ---------- */
+const view = document.getElementById("view");
+view.addEventListener("click", (e) => {
+  const mv = e.target.closest("[data-move]");
+  if (mv) { document.activeElement?.blur(); const [id, to] = mv.dataset.move.split("|"); requestMove(+id, to, VARIANTS[vi].key === "C" ? "table" : "board"); return; }
+  const jb = e.target.closest("[data-job]"); if (jb) { job = jb.dataset.job; swapped = null; render(); return; }
+  const sf = e.target.closest("[data-stagefilter]"); if (sf) { filt.stage = sf.dataset.stagefilter; swapped = "table"; render(); return; }
+  if (e.target.id === "showAll") { filt = { job: "all", stage: "all", q: "" }; swapped = "table"; render(); }
+});
+view.addEventListener("change", (e) => {
+  if (e.target.id === "jobPick") { job = e.target.value; swapped = null; render(); }
+  if (e.target.id === "fJob") { filt.job = e.target.value; swapped = "table"; render(); }
+});
+view.addEventListener("input", (e) => {
+  if (e.target.id === "fQ") { filt.q = e.target.value; swapped = "table"; render(); const q = document.getElementById("fQ"); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+});
+// Drag-and-drop (variant B only)
+view.addEventListener("dragstart", (e) => {
+  const c = e.target.closest("[data-drag]"); if (!c) return;
+  dragId = +c.dataset.drag; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId);
+  const legal = Rules.moves(apps.find(a => a.id === dragId)).map(m => m.to);
+  view.querySelectorAll("[data-drop]").forEach(col => col.classList.add(legal.includes(col.dataset.drop) ? "drop-ok" : "drop-bad"));
+});
+view.addEventListener("dragend", () => { dragId = null; view.querySelectorAll("[data-drop]").forEach(c => c.classList.remove("drop-ok", "drop-bad", "drop-hover")); });
+view.addEventListener("dragover", (e) => { const col = e.target.closest("[data-drop]"); if (col && dragId) { e.preventDefault(); col.classList.add("drop-hover"); } });
+view.addEventListener("dragleave", (e) => { const col = e.target.closest("[data-drop]"); if (col && !col.contains(e.relatedTarget)) col.classList.remove("drop-hover"); });
+view.addEventListener("drop", (e) => {
+  const col = e.target.closest("[data-drop]"); if (!col || !dragId) return;
+  e.preventDefault(); const id = dragId, to = col.dataset.drop; dragId = null;
+  if (apps.find(a => a.id === id).stage === to) { render(); return; }
+  requestMove(id, to, "board");
+});
+
+document.getElementById("reset").onclick = () => { apps = seed(); log = []; last = null; swapped = null; render(); };
+const go = (d) => { vi = (vi + d + 3) % 3; swapped = null; render(); };
+document.getElementById("prevV").onclick = () => go(-1);
+document.getElementById("nextV").onclick = () => go(1);
+document.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+  if (document.getElementById("reasonDlg").open) return;
+  if (e.key === "ArrowLeft") go(-1);
+  if (e.key === "ArrowRight") go(1);
+});
+render();
+</script>
+</body>
+</html>

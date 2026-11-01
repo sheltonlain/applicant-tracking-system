@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Where did this candidate come from?</title>
+<style>
+  :root { --accent: #2f6f5e; --accent-soft: #e6f0ed; --ink: #1f2328; --muted: #6a737d; --line: #e3e3de; --bad: #a3312b; --bad-soft: #fbeceb; --warn: #8a5a00; --warn-soft: #fdf3e1; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #f7f7f5; }
+  header { padding: 28px 32px 8px; max-width: 1400px; margin: 0 auto; }
+  .badge { display: inline-block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 2px 8px; border-radius: 4px; }
+  h1 { margin: 10px 0 6px; font-size: 26px; }
+  .question { max-width: 900px; color: #333; }
+  .layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 16px 32px 48px; max-width: 1400px; margin: 0 auto; align-items: start; }
+  .parts { display: flex; gap: 8px; margin-bottom: 14px; }
+  .parts button, .tabs button { border: 1px solid var(--line); background: #fff; padding: 7px 12px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 14px; }
+  .parts button.on, .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .part-intro { color: #444; margin: 0 0 14px; max-width: 900px; }
+  .cols { display: grid; gap: 16px; }
+  .cols.three { grid-template-columns: repeat(3, 1fr); }
+  .cols.two { grid-template-columns: repeat(2, 1fr); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .card h2 { font-size: 16px; margin: 0; }
+  .card .sub { color: var(--muted); font-size: 13px; margin: 2px 0 12px; }
+  .card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  .msg { border-radius: 6px; padding: 8px 10px; font-size: 13.5px; background: #f3f3f0; color: #444; min-height: 38px; }
+  .msg.ok { background: var(--accent-soft); color: #1d4a3e; }
+  .msg.blocked { background: var(--bad-soft); color: var(--bad); }
+  .msg.cost { background: var(--warn-soft); color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 4px 6px; }
+  td { border-bottom: 1px solid #f0f0ec; padding: 5px 6px; vertical-align: top; }
+  tr.new td { background: #fffbe0; }
+  .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: #fafaf8; }
+  .chip.new { border-color: #d9c46a; background: #fffbe0; }
+  .report li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed #eee; }
+  .report ul { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+  .groups { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .lost { color: var(--bad); font-style: italic; }
+  aside { position: sticky; top: 16px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tabs button { font-size: 13px; padding: 5px 10px; }
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 3px; }
+  input, select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 14px; background: #fff; }
+  .btn { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-size: 14px; cursor: pointer; text-align: left; }
+  .btn.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn:disabled { background: #e9e9e5; color: #999; cursor: default; }
+  .btn.done { background: var(--accent-soft); color: #1d4a3e; }
+  .scenario p { margin: 0 0 10px; font-size: 14px; }
+  .watch { background: #f3f3f0; border-radius: 6px; padding: 8px 10px; font-size: 13.5px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Throwaway prototype</span>
+  <h1>Where did this candidate come from?</h1>
+  <p class="question">
+    <strong>The question:</strong> Candidates reach us through the company website, job boards, referrals and other channels.
+    Should the system save that as <strong>(A)</strong> a fixed list of choices plus an optional note,
+    <strong>(B)</strong> a list of sources that staff can add to themselves, or <strong>(C)</strong> whatever the staff member types?
+    And should the source be saved <strong>once per candidate</strong> or <strong>separately for each job application</strong>?
+    Each button below runs the same real-world event through every option side by side, so you can see what each one would actually keep.
+    (The rule we already settled still applies: <em>every candidate needs a unique email</em>.)
+  </p>
+</header>
+
+<div class="layout">
+  <main>
+    <div class="parts">
+      <button id="part1btn">Part 1 · How to store the source (A / B / C)</button>
+      <button id="part2btn">Part 2 · Save it on the candidate or on each application?</button>
+    </div>
+    <div id="main"></div>
+  </main>
+  <aside class="card" id="aside"></aside>
+</div>
+
+<!-- ===================== THE LOGIC (pure, no page code) ===================== -->
+<script>
+const CATS = { WEBSITE: "Company Website", JOB_BOARD: "Job Board", REFERRAL: "Referral", OTHER: "Other", CAREER_FAIR: "Career Fair" };
+
+// What a staff member was told, and what they'd realistically do under each option.
+const RAW = {
+  "Company website":   { a: { cat: "WEBSITE",     detail: "" },                 b: { pick: "Company Website" } },
+  "careers page":      { a: { cat: "WEBSITE",     detail: "careers page" },     b: { pick: "Company Website" } },
+  "LinkedIn":          { a: { cat: "JOB_BOARD",   detail: "LinkedIn" },         b: { pick: "LinkedIn" } },
+  "linkedin":          { a: { cat: "JOB_BOARD",   detail: "linkedin" },         b: { pick: "LinkedIn" } },
+  "Linked In":         { a: { cat: "JOB_BOARD",   detail: "Linked In" },        b: { create: "Linked In", note: "didn't notice the existing “LinkedIn” entry and clicked “Add new source”" } },
+  "Indeed":            { a: { cat: "JOB_BOARD",   detail: "Indeed" },           b: { pick: "Indeed" } },
+  "Referred by Maria": { a: { cat: "REFERRAL",    detail: "Maria" },            b: { pick: "Referral", note: "there's nowhere to write down who made the referral (Maria)" } },
+  "Referral from Sam": { a: { cat: "REFERRAL",    detail: "Sam" },              b: { pick: "Referral", note: "there's nowhere to write down who made the referral (Sam)" } },
+  "Career Fair 2026":  { a: { cat: "CAREER_FAIR", detail: "Career Fair 2026", fallback: "OTHER" }, b: { pickOrCreate: "Career Fair" } },
+};
+const RAW_INPUTS = Object.keys(RAW);
+
+function countBy(items, keyFn) {
+  const m = new Map();
+  for (const it of items) { const k = keyFn(it); m.set(k, (m.get(k) || 0) + 1); }
+  return [...m.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]));
+}
+
+/* ---------- Part 1: how to store the source ---------- */
+const SourceLogic = {
+  initial() {
+    return {
+      nextId: 1, lastId: null, lastSource: null,
+      A: { categories: ["WEBSITE", "JOB_BOARD", "REFERRAL", "OTHER"], candidates: [], msg: null },
+      B: { sources: ["Company Website", "LinkedIn", "Indeed", "Referral"], candidates: [], msg: null },
+      C: { candidates: [], msg: null },
+    };
+  },
+
+  reduce(state, action) {
+    if (action.type === "reset") return SourceLogic.initial();
+    const s = structuredClone(state);
+    s.lastSource = null;
+
+    if (action.type === "addCandidate") {
+      const email = action.email.trim().toLowerCase();
+      const id = s.nextId++;
+      s.lastId = id;
+      const dup = (opt) => s[opt].candidates.some(c => c.email === email);
+      const reject = { kind: "blocked", text: `Rejected: a candidate with ${email} already exists. Nothing new was saved, including how they found us this time.` };
+
+      // A: fixed choices + optional detail
+      if (dup("A")) s.A.msg = reject;
+      else {
+        const r = RAW[action.raw].a;
+        let cat = r.cat, text;
+        if (!s.A.categories.includes(cat)) {
+          cat = r.fallback;
+          text = `There is no “${CATS[r.cat]}” choice yet, so the staff member picked “Other” and typed “${r.detail}” in the note box.`;
+        } else {
+          text = `The staff member picked “${CATS[cat]}”` + (r.detail ? ` and typed “${r.detail}” in the note box.` : ".");
+        }
+        s.A.candidates.push({ id, name: action.name, email, cat, detail: r.detail });
+        s.A.msg = { kind: "ok", text };
+      }
+
+      // B: staff-managed list of sources
+      if (dup("B")) s.B.msg = reject;
+      else {
+        const r = RAW[action.raw].b;
+        let src, text;
+        if (r.pick) {
+          src = r.pick;
+          text = `The staff member picked “${src}” from the dropdown.` + (r.note ? ` But ${r.note}.` : "");
+        } else if (r.create) {
+          src = r.create;
+          if (!s.B.sources.includes(src)) { s.B.sources.push(src); s.lastSource = src; }
+          text = `The staff member ${r.note}, so a new “${src}” entry now exists next to “LinkedIn”.`;
+        } else {
+          src = r.pickOrCreate;
+          if (s.B.sources.includes(src)) text = `The staff member picked “${src}” from the dropdown.`;
+          else { s.B.sources.push(src); s.lastSource = src; text = `There was no “${src}” entry, so the staff member added one on the spot. No developer needed.`; }
+        }
+        s.B.candidates.push({ id, name: action.name, email, src });
+        s.B.msg = { kind: "ok", text };
+      }
+
+      // C: free text
+      if (dup("C")) s.C.msg = reject;
+      else {
+        s.C.candidates.push({ id, name: action.name, email, raw: action.raw });
+        s.C.msg = { kind: "ok", text: `The staff member typed “${action.raw}”, and it is saved exactly as typed.` };
+      }
+      return s;
+    }
+
+    if (action.type === "addCareerFair") {
+      s.lastId = null;
+      if (s.A.categories.includes("CAREER_FAIR")) s.A.msg = { kind: "", text: "“Career Fair” is already a choice." };
+      else {
+        s.A.categories.push("CAREER_FAIR");
+        s.lastSource = "CAREER_FAIR";
+        const stuck = s.A.candidates.filter(c => c.cat === "OTHER" && c.detail === "Career Fair 2026").length;
+        s.A.msg = { kind: "cost", text: `Needs a developer: add “Career Fair” to the choices in the code, then redeploy.` +
+          (stuck ? ` The ${stuck} candidate(s) already saved as “Other” stay that way until someone edits them.` : "") };
+      }
+      if (s.B.sources.includes("Career Fair")) s.B.msg = { kind: "", text: "Already there. A staff member created it earlier, on the spot." };
+      else { s.B.sources.push("Career Fair"); s.lastSource = "Career Fair"; s.B.msg = { kind: "ok", text: "A staff member added “Career Fair” on the Sources page. No developer needed." }; }
+      s.C.msg = { kind: "", text: "Nothing to add, because there is no shared list. Staff will type “career fair” however they like." };
+      return s;
+    }
+    return s;
+  },
+
+  storedLabel(opt, c) {
+    if (opt === "A") return CATS[c.cat] + (c.detail ? ` · ${c.detail}` : "");
+    if (opt === "B") return c.src;
+    return c.raw;
+  },
+
+  report(state, opt) {
+    const key = opt === "A" ? (c => CATS[c.cat]) : opt === "B" ? (c => c.src) : (c => c.raw);
+    return countBy(state[opt].candidates, key);
+  },
+};
+
+/* ---------- Part 2: where the source lives ---------- */
+const JOBS = ["Data Analyst", "Marketing Coordinator"];
+const categoryOf = (raw) => CATS[RAW[raw].a.cat === "CAREER_FAIR" ? "OTHER" : RAW[raw].a.cat];
+const fullLabel = (raw) => categoryOf(raw) + (RAW[raw].a.detail ? ` · ${RAW[raw].a.detail}` : "");
+
+const PlacementLogic = {
+  initial() { return { nextId: 1, lastId: null, candidates: [], applications: [], event: null }; },
+
+  reduce(state, action) {
+    if (action.type === "reset") return PlacementLogic.initial();
+    const s = structuredClone(state);
+
+    if (action.type === "apply") {
+      const email = action.email.trim().toLowerCase();
+      let cand = s.candidates.find(c => c.email === email);
+      const existed = !!cand;
+      if (!cand) { cand = { email, name: action.name }; s.candidates.push(cand); }
+      if (s.applications.some(a => a.email === email && a.job === action.job)) {
+        s.event = { kind: "blockedDup", name: cand.name, job: action.job };
+        s.lastId = null;
+        return s;
+      }
+      const id = s.nextId++;
+      s.applications.push({ id, email, job: action.job, raw: action.raw, stage: "Applied" });
+      s.lastId = id;
+      s.event = { kind: "applied", name: cand.name, job: action.job, raw: action.raw, existed };
+      return s;
+    }
+
+    if (action.type === "hire") {
+      const app = s.applications.find(a => a.email === action.email && a.job === action.job);
+      if (app) { app.stage = "Hired"; s.lastId = app.id; s.event = { kind: "hired", name: s.candidates.find(c => c.email === app.email).name, job: app.job }; }
+      return s;
+    }
+    return s;
+  },
+
+  // What the database would actually remember under each placement.
+  view(state, placement) {
+    const firstApp = (email) => state.applications.find(a => a.email === email);
+    const candSource = (email) => { const f = firstApp(email); return f ? f.raw : null; };
+
+    const candidates = state.candidates.map(c => ({
+      ...c,
+      source: placement === "candidate" ? (candSource(c.email) ? fullLabel(candSource(c.email)) : "—") : null,
+    }));
+    const applications = state.applications.map(a => {
+      const name = state.candidates.find(c => c.email === a.email).name;
+      if (placement === "application") return { ...a, name, source: fullLabel(a.raw), lost: false };
+      const isFirst = firstApp(a.email).id === a.id;
+      return { ...a, name, source: null, lost: !isFirst, lostRaw: a.raw };
+    });
+    const credit = (a) => placement === "application" ? categoryOf(a.raw) : categoryOf(candSource(a.email));
+    const hires = countBy(state.applications.filter(a => a.stage === "Hired"), credit);
+    const appsBy = countBy(state.applications, credit);
+
+    let msg = null;
+    const e = state.event;
+    if (e && e.kind === "blockedDup") msg = { kind: "blocked", text: `Rejected: ${e.name} already has an application for ${e.job} (only one application per opening is allowed).` };
+    else if (e && e.kind === "hired") {
+      const app = state.applications.find(a => a.id === state.lastId);
+      msg = { kind: "ok", text: `${e.name} was hired as ${e.job}. The hire is credited to “${credit(app)}”.` };
+    } else if (e && e.kind === "applied") {
+      if (placement === "application") msg = { kind: "ok", text: `Saved on this application: “${fullLabel(e.raw)}”.` };
+      else if (!e.existed) msg = { kind: "ok", text: `New candidate. Their source is saved once, on the candidate: “${fullLabel(e.raw)}”.` };
+      else msg = { kind: "cost", text: `${e.name} already exists, so the candidate keeps the original source (“${fullLabel(candSource(state.applications.find(a => a.id === state.lastId).email))}”). How they found this job (“${fullLabel(e.raw)}”) is not saved anywhere.` };
+    }
+    return { candidates, applications, hires, appsBy, msg };
+  },
+};
+</script>
+
+<!-- ===================== THE PAGE (thin shell) ===================== -->
+<script>
+let s1 = SourceLogic.initial();
+let s2 = PlacementLogic.initial();
+let part = 1;
+let tab = "free";
+let progress = 0;
+
+const esc = (t) => String(t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const msgBox = (m) => `<div class="msg ${m ? m.kind : ""}">${m ? esc(m.text) : "Nothing has happened yet."}</div>`;
+const reportList = (rows, noun) => rows.length
+  ? `<ul>${rows.map(([k, n]) => `<li><span>${esc(k)}</span><strong>${n}</strong></li>`).join("")}</ul><div class="groups">${rows.length} separate group(s)</div>`
+  : `<div class="empty">No ${noun} yet.</div>`;
+
+function d1(action) { s1 = SourceLogic.reduce(s1, action); render(); }
+function d2(action) { s2 = PlacementLogic.reduce(s2, action); render(); }
+
+/* ---------- Scenarios ---------- */
+const add = (name, email, raw) => ({ label: `${name} (${email}) says: “${raw}”`, run: () => d1({ type: "addCandidate", name, email, raw }) });
+const apply = (name, email, job, raw) => ({ label: `${name} applies for ${job}. How did they find it? “${raw}”`, run: () => d2({ type: "apply", name, email, job, raw }) });
+const hire = (name, email, job) => ({ label: `Move ${name}'s ${job} application to Hired`, run: () => d2({ type: "hire", email, job }) });
+
+const SCENARIOS = [
+  { id: "normal", part: 1, title: "A normal week",
+    text: "Three candidates come in through common, tidy channels.",
+    watch: "So far all three options look nearly the same. The differences show up in the next scenarios.",
+    steps: [add("Ana Lopez", "ana@example.com", "Company website"), add("Ben Okafor", "ben@example.com", "Indeed"), add("Chloe Kim", "chloe@example.com", "Referred by Maria")] },
+  { id: "spelling", part: 1, title: "Three ways to spell LinkedIn",
+    text: "Different staff members enter candidates who all found us on LinkedIn, plus one who says “careers page” instead of “company website”.",
+    watch: "Look at “Candidates by source” in each column. How many separate groups does each option produce for the same reality?",
+    steps: [add("Dev Patel", "dev@example.com", "LinkedIn"), add("Erin Shaw", "erin@example.com", "linkedin"), add("Femi Ade", "femi@example.com", "Linked In"), add("Gia Rossi", "gia@example.com", "careers page")] },
+  { id: "newsource", part: 1, title: "A new kind of source",
+    text: "The company starts recruiting at career fairs. The first career-fair candidate arrives before anyone has planned for it.",
+    watch: "Under A, which category does Hana end up in, before and after “Career Fair” is added? Who has to do the work in each option?",
+    steps: [add("Hana Mori", "hana@example.com", "Career Fair 2026"),
+      { label: "Management asks for a “Career Fair” source", run: () => d1({ type: "addCareerFair" }) },
+      add("Ivan Petrov", "ivan@example.com", "Career Fair 2026")] },
+  { id: "dupe", part: 1, title: "The same person, again",
+    text: "Jane is added after finding us on LinkedIn. Weeks later she is referred by Maria, and a staff member tries to add her again using a capitalized email.",
+    watch: "Every option rejects the second entry (our unique-email rule). Note that the referral information is lost. Part 2 is about this problem.",
+    steps: [add("Jane Doe", "jane@example.com", "LinkedIn"), add("Jane Doe", "JANE@example.com", "Referred by Maria")] },
+  { id: "twojobs", part: 2, title: "Same person, two jobs",
+    text: "Jane applies for Data Analyst after seeing it on LinkedIn. Later Maria refers her for Marketing Coordinator, and she is hired for that job. Then someone tries to submit her for Data Analyst again.",
+    watch: "Compare “Hires by source”. Does the referral get credit for the hire? And is the second Data Analyst application blocked in both options?",
+    steps: [apply("Jane Doe", "jane@example.com", "Data Analyst", "LinkedIn"),
+      apply("Jane Doe", "jane@example.com", "Marketing Coordinator", "Referred by Maria"),
+      hire("Jane", "jane@example.com", "Marketing Coordinator"),
+      apply("Jane Doe", "jane@example.com", "Data Analyst", "Indeed")] },
+  { id: "credit", part: 2, title: "Who gets credit for hires?",
+    text: "Three hires. Two of them came back to us through a different channel than the first time we met them.",
+    watch: "Management asks, “Are referrals worth paying bonuses for?” Which column gives the honest answer?",
+    steps: [apply("Ana Lopez", "ana@example.com", "Data Analyst", "Company website"),
+      apply("Ben Okafor", "ben@example.com", "Data Analyst", "Indeed"),
+      apply("Ana Lopez", "ana@example.com", "Marketing Coordinator", "Referral from Sam"),
+      apply("Ben Okafor", "ben@example.com", "Marketing Coordinator", "Referred by Maria"),
+      hire("Ana", "ana@example.com", "Marketing Coordinator"),
+      hire("Ben", "ben@example.com", "Marketing Coordinator")] },
+];
+
+function startScenario(id) {
+  const sc = SCENARIOS.find(x => x.id === id);
+  tab = id; progress = 0; part = sc.part;
+  s1 = SourceLogic.initial(); s2 = PlacementLogic.initial();
+  render();
+}
+
+/* ---------- Rendering ---------- */
+function renderPart1() {
+  const opts = [
+    ["A", "A · Fixed list + note", "A dropdown of categories set in the code, plus an optional free-text note."],
+    ["B", "B · Staff-managed list", "Sources are records that staff can add on a Sources page. One pick, no note."],
+    ["C", "C · Free text", "A plain text box. Whatever is typed is saved."],
+  ];
+  return `<p class="part-intro">The same events run through all three options. A yellow highlight marks what just changed.</p>
+  <div class="cols three">${opts.map(([k, title, sub]) => {
+    const st = s1[k];
+    const dropdown = k === "A" ? st.categories.map(c => `<span class="chip ${s1.lastSource === c ? "new" : ""}">${CATS[c]}</span>`).join("")
+      : k === "B" ? st.sources.map(c => `<span class="chip ${s1.lastSource === c ? "new" : ""}">${esc(c)}</span>`).join("")
+      : `<span class="empty">No dropdown, just a text box</span>`;
+    const rows = st.candidates.map(c => `<tr class="${c.id === s1.lastId ? "new" : ""}"><td>${esc(c.name)}</td><td>${esc(SourceLogic.storedLabel(k, c))}</td></tr>`).join("");
+    return `<div class="card">
+      <h2>${title}</h2><div class="sub">${sub}</div>
+      <h3>What just happened</h3>${msgBox(st.msg)}
+      <h3>Choices staff see</h3><div class="chips">${dropdown}</div>
+      <h3>Candidates saved</h3>
+      ${rows ? `<table><tr><th>Name</th><th>Source as saved</th></tr>${rows}</table>` : `<div class="empty">No candidates yet.</div>`}
+      <h3>Report: candidates by source</h3><div class="report">${reportList(SourceLogic.report(s1, k), "candidates")}</div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderPart2() {
+  const opts = [
+    ["candidate", "Saved once, on the Candidate", "Records how we first met this person. Later applications don't record a source."],
+    ["application", "Saved on each Application", "Records how they found each specific job."],
+  ];
+  return `<p class="part-intro">Both columns use option A's categories. The facts are the same in both; the columns differ only in what the database remembers.</p>
+  <div class="cols two">${opts.map(([k, title, sub]) => {
+    const v = PlacementLogic.view(s2, k);
+    const cands = v.candidates.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.email)}</td>${k === "candidate" ? `<td>${esc(c.source)}</td>` : ""}</tr>`).join("");
+    const apps = v.applications.map(a => `<tr class="${a.id === s2.lastId ? "new" : ""}"><td>${esc(a.name)}</td><td>${esc(a.job)}</td><td>${a.stage}</td><td>${
+      k === "application" ? esc(a.source) : a.lost ? `<span class="lost">not saved (was “${esc(a.lostRaw)}”)</span>` : `<span class="empty">see candidate</span>`}</td></tr>`).join("");
+    return `<div class="card">
+      <h2>${title}</h2><div class="sub">${sub}</div>
+      <h3>What just happened</h3>${msgBox(v.msg)}
+      <h3>Candidates</h3>
+      ${cands ? `<table><tr><th>Name</th><th>Email</th>${k === "candidate" ? "<th>Source</th>" : ""}</tr>${cands}</table>` : `<div class="empty">No candidates yet.</div>`}
+      <h3>Applications</h3>
+      ${apps ? `<table><tr><th>Candidate</th><th>Job</th><th>Stage</th><th>Source</th></tr>${apps}</table>` : `<div class="empty">No applications yet.</div>`}
+      <h3>Report: applications by source</h3><div class="report">${reportList(v.appsBy, "applications")}</div>
+      <h3>Report: hires by source</h3><div class="report">${reportList(v.hires, "hires")}</div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function renderAside() {
+  const tabs = `<div class="tabs"><button data-tab="free" class="${tab === "free" ? "on" : ""}">Free play</button>${
+    SCENARIOS.map((sc, i) => `<button data-tab="${sc.id}" class="${tab === sc.id ? "on" : ""}">${sc.part}.${i < 4 ? i + 1 : i - 3} ${sc.title}</button>`).join("")}</div>`;
+  const opts = RAW_INPUTS.map(r => `<option>${esc(r)}</option>`).join("");
+
+  if (tab === "free") {
+    if (part === 1) return tabs + `<h2 style="font-size:16px;margin:0">Free play · Part 1</h2>
+      <label>Candidate name</label><input id="fName" value="Sam Rivera">
+      <label>Email</label><input id="fEmail" value="sam@example.com">
+      <label>What the candidate told us</label><select id="fRaw">${opts}</select>
+      <button class="btn" id="fAdd">Add this candidate</button>
+      <button class="btn secondary" id="fCat">Management asks for a “Career Fair” source</button>
+      <button class="btn secondary" id="fReset">Start over</button>`;
+    const hireable = s2.applications.filter(a => a.stage !== "Hired");
+    return tabs + `<h2 style="font-size:16px;margin:0">Free play · Part 2</h2>
+      <label>Candidate name</label><input id="pName" value="Jane Doe">
+      <label>Email (the same email means the same person)</label><input id="pEmail" value="jane@example.com">
+      <label>Job opening</label><select id="pJob">${JOBS.map(j => `<option>${j}</option>`).join("")}</select>
+      <label>How they found this job</label><select id="pRaw">${opts}</select>
+      <button class="btn" id="pApply">Record this application</button>
+      <label>Hire someone</label>
+      <select id="pHireSel" ${hireable.length ? "" : "disabled"}>${hireable.map(a => `<option value="${esc(a.email)}|${esc(a.job)}">${esc(s2.candidates.find(c => c.email === a.email).name)}, ${esc(a.job)}</option>`).join("") || "<option>No open applications</option>"}</select>
+      <button class="btn secondary" id="pHire" ${hireable.length ? "" : "disabled"}>Move to Hired</button>
+      <button class="btn secondary" id="pReset">Start over</button>`;
+  }
+
+  const sc = SCENARIOS.find(x => x.id === tab);
+  return tabs + `<div class="scenario"><h2 style="font-size:16px;margin:0 0 6px">${sc.title}</h2>
+    <p>${sc.text}</p><div class="watch"><strong>Watch for:</strong> ${sc.watch}</div>
+    ${sc.steps.map((st, i) => `<button class="btn ${i < progress ? "done" : ""}" data-step="${i}" ${i === progress ? "" : "disabled"}>${i < progress ? "✓ " : `${i + 1}. `}${esc(st.label)}</button>`).join("")}
+    <button class="btn secondary" data-restart="1">Restart this scenario</button>
+    ${progress === sc.steps.length ? `<p style="margin-top:12px;color:var(--muted)">Done. Compare the columns on the left.</p>` : ""}</div>`;
+}
+
+function render() {
+  document.getElementById("part1btn").className = part === 1 ? "on" : "";
+  document.getElementById("part2btn").className = part === 2 ? "on" : "";
+  document.getElementById("main").innerHTML = part === 1 ? renderPart1() : renderPart2();
+  document.getElementById("aside").innerHTML = renderAside();
+}
+
+document.getElementById("part1btn").onclick = () => { part = 1; tab = "free"; render(); };
+document.getElementById("part2btn").onclick = () => { part = 2; tab = "free"; render(); };
+
+document.getElementById("aside").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  const val = (id) => document.getElementById(id).value;
+  if (t.dataset.tab) { if (t.dataset.tab === "free") { tab = "free"; render(); } else startScenario(t.dataset.tab); return; }
+  if (t.dataset.restart) { startScenario(tab); return; }
+  if (t.dataset.step) { const sc = SCENARIOS.find(x => x.id === tab); progress++; sc.steps[+t.dataset.step].run(); return; }
+  if (t.id === "fAdd") d1({ type: "addCandidate", name: val("fName"), email: val("fEmail"), raw: val("fRaw") });
+  if (t.id === "fCat") d1({ type: "addCareerFair" });
+  if (t.id === "fReset") d1({ type: "reset" });
+  if (t.id === "pApply") d2({ type: "apply", name: val("pName"), email: val("pEmail"), job: val("pJob"), raw: val("pRaw") });
+  if (t.id === "pHire") { const [email, job] = val("pHireSel").split("|"); d2({ type: "hire", email, job }); }
+  if (t.id === "pReset") d2({ type: "reset" });
+});
+
+render();
+</script>
+</body>
+</html>

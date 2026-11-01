@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · What should we remember about stage moves?</title>
+<style>
+  :root { --accent: #2f6f5e; --accent-soft: #e6f0ed; --ink: #1f2328; --muted: #6a737d; --line: #e3e3de; --bad: #a3312b; --bad-soft: #fbeceb; --warn: #8a5a00; --warn-soft: #fdf3e1; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #f7f7f5; }
+  header { padding: 28px 32px 8px; max-width: 1500px; margin: 0 auto; }
+  .badge { display: inline-block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 2px 8px; border-radius: 4px; }
+  h1 { margin: 10px 0 6px; font-size: 26px; }
+  .question { max-width: 980px; color: #333; }
+  .rules { max-width: 980px; color: var(--muted); font-size: 13.5px; }
+  .layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 16px 32px 48px; max-width: 1500px; margin: 0 auto; align-items: start; }
+  .clock { display: flex; gap: 16px; align-items: center; margin-bottom: 12px; font-size: 14px; color: #444; }
+  .clock strong { color: var(--ink); }
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .card h2 { font-size: 16px; margin: 0; }
+  .card .sub { color: var(--muted); font-size: 13px; margin: 2px 0 12px; }
+  .card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  .msg { border-radius: 6px; padding: 8px 10px; font-size: 13.5px; background: #f3f3f0; color: #444; min-height: 38px; }
+  .msg.ok { background: var(--accent-soft); color: #1d4a3e; }
+  .msg.blocked { background: var(--bad-soft); color: var(--bad); }
+  .msg.cost { background: var(--warn-soft); color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--line); padding: 4px 5px; }
+  td { border-bottom: 1px solid #f0f0ec; padding: 4px 5px; vertical-align: top; }
+  tr.focus td { background: #f4f8f6; }
+  tr.new td { background: #fffbe0; }
+  .empty { color: var(--muted); font-size: 13px; font-style: italic; }
+  .qa { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+  .qa li { padding: 6px 0; border-bottom: 1px dashed #eee; }
+  .qa .q { color: var(--muted); font-size: 12.5px; }
+  .qa .unknown { color: var(--bad); font-style: italic; }
+  .count { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  aside { position: sticky; top: 16px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tabs button { border: 1px solid var(--line); background: #fff; padding: 5px 10px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px; }
+  .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 3px; }
+  input, select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 14px; background: #fff; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .btn { display: block; width: 100%; margin-top: 8px; padding: 8px 12px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-size: 14px; cursor: pointer; text-align: left; }
+  .btn.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn:disabled { background: #e9e9e5; color: #999; cursor: default; }
+  .btn.done { background: var(--accent-soft); color: #1d4a3e; }
+  .scenario p { margin: 0 0 10px; font-size: 14px; }
+  .watch { background: #f3f3f0; border-radius: 6px; padding: 8px 10px; font-size: 13.5px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Throwaway prototype</span>
+  <h1>What should the system remember about stage moves?</h1>
+  <p class="question">
+    <strong>The question:</strong> When staff move an application between stages, should the database keep
+    <strong>(A)</strong> only the current stage plus a single “closed from” field,
+    <strong>(B)</strong> a full history of every move (who, when, from, to), or
+    <strong>(C)</strong> that history plus a <em>required reason</em> when rejecting, withdrawing or reopening?
+    Every button sends the same real-world action to all three options, so you can compare what each one keeps and which everyday questions it can answer.
+  </p>
+  <p class="rules">Stage rules (already decided): forward one stage at a time; back one stage; Reject/Withdraw from any active stage; Reopen sends a Rejected/Withdrawn application back to the stage it was closed from; Hired is permanent.</p>
+</header>
+
+<div class="layout">
+  <main>
+    <div class="clock" id="clock"></div>
+    <div class="cols" id="cols"></div>
+  </main>
+  <aside class="card" id="aside"></aside>
+</div>
+
+<!-- ===================== THE LOGIC (pure, no page code) ===================== -->
+<script>
+const STAGES = { APPLIED: "Applied", SCREENING: "Screening", INTERVIEW: "Interview", FINAL_REVIEW: "Final Review",
+  OFFER: "Offer", HIRED: "Hired", REJECTED: "Rejected", WITHDRAWN: "Withdrawn" };
+const ACTIVE = ["APPLIED", "SCREENING", "INTERVIEW", "FINAL_REVIEW", "OFFER"];
+const CLOSED = ["REJECTED", "WITHDRAWN"];
+const NEEDS_REASON = ["reject", "withdraw", "reopen"];
+const VERB_TEXT = { advance: "advance", back: "move back", reject: "reject", withdraw: "mark withdrawn", reopen: "reopen" };
+const APPS = { ana: "Ana Lopez", ben: "Ben Okafor", chloe: "Chloe Kim" };
+
+const HistoryLogic = {
+  initial() {
+    const apps = () => Object.fromEntries(Object.keys(APPS).map(id => [id, { stage: "APPLIED", closedFrom: null }]));
+    const created = () => Object.keys(APPS).map(id => ({ day: 1, user: "Priya", app: id, from: null, to: "APPLIED", note: "", isNew: false }));
+    return {
+      day: 1,
+      A: { apps: apps(), msg: null },
+      B: { apps: apps(), history: created(), msg: null },
+      C: { apps: apps(), history: created(), msg: null },
+    };
+  },
+
+  // Where would Reopen send this application? Each option has to work it out from what it stored.
+  closedFrom(state, opt, appId) {
+    const app = state[opt].apps[appId];
+    if (!CLOSED.includes(app.stage)) return null;
+    if (opt === "A") return app.closedFrom;
+    const rows = state[opt].history.filter(r => r.app === appId && r.to === app.stage);
+    return rows.length ? rows[rows.length - 1].from : null;
+  },
+
+  // Applies the stage rules. Returns { to } or { error }.
+  target(verb, stage, closedFrom) {
+    const i = ACTIVE.indexOf(stage);
+    const name = STAGES[stage];
+    if (verb === "advance") return i >= 0 ? { to: i < ACTIVE.length - 1 ? ACTIVE[i + 1] : "HIRED" } : { error: `Can't advance: it is already ${name}.` };
+    if (verb === "back") return i > 0 ? { to: ACTIVE[i - 1] } : { error: i === 0 ? "Can't move back from Applied, the first stage." : `Can't move back: it is ${name}.` };
+    if (verb === "reject" || verb === "withdraw") return i >= 0 ? { to: verb === "reject" ? "REJECTED" : "WITHDRAWN" } : { error: `Nothing to do: it is already ${name}.` };
+    if (verb === "reopen") {
+      if (!CLOSED.includes(stage)) return { error: `Can't reopen: it is ${name}, not Rejected or Withdrawn.` };
+      return closedFrom ? { to: closedFrom } : { error: "Can't reopen: nothing in the database says which stage it was closed from." };
+    }
+  },
+
+  reduce(state, action) {
+    if (action.type === "reset") return HistoryLogic.initial();
+    const s = structuredClone(state);
+    for (const o of ["B", "C"]) s[o].history.forEach(r => (r.isNew = false));
+
+    if (action.type === "wait") {
+      s.day += action.days;
+      for (const o of ["A", "B", "C"]) s[o].msg = { kind: "", text: `${action.days} day(s) pass. It is now day ${s.day}.` };
+      return s;
+    }
+
+    if (action.type === "move") {
+      const { app: id, verb, user, note = "", crash = "none" } = action;
+      const who = APPS[id];
+      for (const o of ["A", "B", "C"]) {
+        const app = s[o].apps[id];
+        const from = app.stage;
+        const t = HistoryLogic.target(verb, from, HistoryLogic.closedFrom(s, o, id));
+        if (t.error) { s[o].msg = { kind: "blocked", text: `${user} tried to ${VERB_TEXT[verb]} ${who}. ${t.error}` }; continue; }
+        if (o === "C" && NEEDS_REASON.includes(verb) && !note.trim()) {
+          s[o].msg = { kind: "blocked", text: `Refused: in C you must type a reason to ${VERB_TEXT[verb]}. ${who} stays ${STAGES[from]}.` };
+          continue;
+        }
+        if (crash === "atomic") {
+          s[o].msg = { kind: "cost", text: `The server crashed partway through, but everything was inside a transaction, so the whole move was undone. ${who} is still ${STAGES[from]}. ${user} sees an error and can try again.` };
+          continue;
+        }
+        app.stage = t.to;
+        const label = `${who}: ${STAGES[from]} → ${STAGES[t.to]}`;
+        if (o === "A") {
+          app.closedFrom = CLOSED.includes(t.to) ? from : null;
+          s[o].msg = { kind: "ok", text: `Saved ${label}.` + (CLOSED.includes(t.to) ? ` “Closed from” set to ${STAGES[from]}.` : verb === "reopen" ? " “Closed from” cleared." : "") +
+            (crash === "noTx" ? " (A saves everything in one step, so the crash didn't cause any damage.)" : "") + " Who did it, and when, is not saved." };
+          continue;
+        }
+        if (crash === "noTx") {
+          s[o].msg = { kind: "blocked", text: `The stage was saved (${label}), then the server crashed before the history row was written. The history no longer matches reality.` };
+          continue;
+        }
+        s[o].history.push({ day: s.day, user, app: id, from, to: t.to, note: o === "C" ? note.trim() : "", isNew: true });
+        s[o].msg = { kind: "ok", text: `Saved ${label} and added a history row.` +
+          (o === "B" && note.trim() ? ` The reason you typed was thrown away, because B has no place to store it.` : "") };
+      }
+      return s;
+    }
+    return s;
+  },
+
+  // Everyday questions a hiring manager asks about one application.
+  answers(state, opt, id) {
+    const app = state[opt].apps[id];
+    const rows = opt === "A" ? null : state[opt].history.filter(r => r.app === id);
+    const U = (t) => ({ a: t || "Unknown: not recorded", unknown: true });
+    const K = (t) => ({ a: t, unknown: false });
+    const out = [];
+
+    out.push({ q: "What stage is it in now?", ...K(STAGES[app.stage]) });
+
+    if (!rows) out.push({ q: "Who made the last move, and when?", ...U() });
+    else { const r = rows[rows.length - 1]; out.push({ q: "Who made the last move, and when?", ...K(`${r.user}, day ${r.day} (${r.from ? STAGES[r.from] + " → " : "recorded as "}${STAGES[r.to]})`) }); }
+
+    if (CLOSED.includes(app.stage)) {
+      const cf = HistoryLogic.closedFrom(state, opt, id);
+      out.push({ q: "If reopened, which stage does it go back to?", ...(cf ? K(STAGES[cf]) : U("Unknown: the record is missing, so it can't be reopened")) });
+    }
+
+    if (!rows) out.push({ q: "Has it ever been rejected or withdrawn before?", ...U() });
+    else { const n = rows.filter(r => CLOSED.includes(r.to)).length; out.push({ q: "Has it ever been rejected or withdrawn before?", ...K(n ? `Yes, ${n} time(s)` : "No") }); }
+
+    if (!rows) out.push({ q: "How many days did it spend in Interview?", ...U() });
+    else {
+      let days = 0;
+      rows.forEach((r, i) => { if (r.to === "INTERVIEW") days += (i + 1 < rows.length ? rows[i + 1].day : state.day) - r.day; });
+      out.push({ q: "How many days did it spend in Interview?", ...K(rows.some(r => r.to === "INTERVIEW") ? `${days} day(s), according to the history` : "Never reached Interview") });
+    }
+
+    const lastClose = rows ? [...rows].reverse().find(r => CLOSED.includes(r.to)) : null;
+    if (opt === "C") out.push({ q: "Why was it last rejected or withdrawn?", ...(lastClose ? K(`“${lastClose.note}” (${lastClose.user})`) : K("It was never closed")) });
+    else out.push({ q: "Why was it last rejected or withdrawn?", ...U(opt === "B" && !lastClose ? "It was never closed (and B wouldn't store a reason anyway)" : "Unknown: no reason is stored") });
+
+    return out;
+  },
+};
+</script>
+
+<!-- ===================== THE PAGE (thin shell) ===================== -->
+<script>
+let st = HistoryLogic.initial();
+let focus = "ana";
+let tab = "free";
+let progress = 0;
+let lastApp = null;
+
+const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const msgBox = (m) => `<div class="msg ${m ? m.kind : ""}">${m ? esc(m.text) : "Nothing has happened yet."}</div>`;
+function dispatch(action) { st = HistoryLogic.reduce(st, action); if (action.app) { focus = action.app; lastApp = action.app; } render(); }
+
+/* ---------- Scenarios ---------- */
+const DOES = { advance: "advances", back: "moves back", reject: "rejects", withdraw: "marks withdrawn", reopen: "reopens" };
+const mv = (user, verb, app, note = "", crash = "none", extra = "") => ({
+  label: `${user} ${DOES[verb]} ${APPS[app].split(" ")[0]}${note ? ` (reason: “${note}”)` : ""}${extra}`,
+  run: () => dispatch({ type: "move", user, verb, app, note, crash }) });
+const wait = (days) => ({ label: `${days} day(s) pass`, run: () => dispatch({ type: "wait", days }) });
+
+const SCENARIOS = [
+  { id: "hire", title: "A normal hire", focus: "ana",
+    text: "Ana moves through every stage over about two weeks. Two different staff members handle different steps.",
+    watch: "At the end, look at “Questions about Ana” in each column. Which option can tell you who hired her, and how long Interview took?",
+    steps: [mv("Priya", "advance", "ana"), wait(2), mv("Sam", "advance", "ana"), wait(5), mv("Sam", "advance", "ana"),
+      wait(3), mv("Priya", "advance", "ana"), wait(2), mv("Priya", "advance", "ana", "", "none", " to Hired")] },
+  { id: "reopen", title: "Reject, reopen, reject again", focus: "ben",
+    text: "Sam rejects Ben at Interview. Priya reopens him, moves him back to Screening, and later rejects him from there.",
+    watch: "Where would each option reopen Ben the second time? Can each one tell you that Ben was rejected before?",
+    steps: [mv("Priya", "advance", "ben"), mv("Priya", "advance", "ben"), wait(1),
+      mv("Sam", "reject", "ben", "Weak SQL skills"), wait(3), mv("Priya", "reopen", "ben", "Hiring manager asked for a second look"),
+      mv("Priya", "back", "ben"), wait(2), mv("Priya", "reject", "ben", "Salary expectations too high")] },
+  { id: "misclick", title: "The mis-click", focus: "chloe",
+    text: "Sam means to advance Chloe once but clicks twice. Priya notices and moves her back.",
+    watch: "Option A looks perfectly clean afterwards, while B and C show the mistake and the fix. Which one would you want when someone asks, “Why did Chloe skip her screening call?”",
+    steps: [mv("Sam", "advance", "chloe"), mv("Sam", "advance", "chloe", "", "none", " again (oops)"), wait(1), mv("Priya", "back", "chloe")] },
+  { id: "reason", title: "Rejecting in a hurry", focus: "ben",
+    text: "Sam is moving quickly through the pipeline and rejects Ben without typing a reason, then is asked to try again with one.",
+    watch: "C refuses the quick click, so the options drift apart: A and B already show Ben as Rejected. That friction is exactly what C costs every time someone rejects, withdraws, or reopens.",
+    steps: [mv("Sam", "advance", "ben"), mv("Sam", "reject", "ben"), mv("Sam", "reject", "ben", "Not enough experience", "none", " again")] },
+  { id: "crash", title: "The server crashes mid-move", focus: "ben",
+    text: "In B and C, saving a move takes two writes: update the stage, then add a history row. What happens if the server dies between those two writes?",
+    watch: "Without a transaction, B and C end up with Ben Rejected but no history row, so Reopen no longer works. With a transaction (Django's transaction.atomic), the half-finished move is undone completely and can simply be retried.",
+    steps: [mv("Priya", "advance", "ben"), mv("Priya", "advance", "ben"),
+      mv("Sam", "reject", "ben", "No-show", "noTx", ". The server crashes, with NO transaction"),
+      mv("Priya", "reopen", "ben", "Was a mix-up"),
+      mv("Priya", "advance", "chloe"), mv("Priya", "advance", "chloe"),
+      mv("Sam", "reject", "chloe", "No-show", "atomic", ". The server crashes INSIDE a transaction"),
+      mv("Sam", "reject", "chloe", "No-show", "none", " (retry)"),
+      mv("Priya", "reopen", "chloe", "Was a mix-up")] },
+];
+
+function startScenario(id) {
+  const sc = SCENARIOS.find(x => x.id === id);
+  tab = id; progress = 0; st = HistoryLogic.initial(); focus = sc.focus; lastApp = null; render();
+}
+
+/* ---------- Rendering ---------- */
+function column(o, title, sub) {
+  const s = st[o];
+  const appRows = Object.keys(APPS).map(id => `<tr class="${id === focus ? "focus" : ""}">
+      <td>${APPS[id]}</td><td>${STAGES[s.apps[id].stage]}</td>${o === "A" ? `<td>${s.apps[id].closedFrom ? STAGES[s.apps[id].closedFrom] : "—"}</td>` : ""}</tr>`).join("");
+  const history = o === "A" ? `<div class="empty">No history is kept. Each move overwrites the stage.</div>` : `
+    <table><tr><th>Day</th><th>Who</th><th>App</th><th>Move</th>${o === "C" ? "<th>Reason</th>" : ""}</tr>
+    ${s.history.map(r => `<tr class="${r.isNew ? "new" : ""}"><td>${r.day}</td><td>${r.user}</td><td>${APPS[r.app].split(" ")[0]}</td>
+      <td>${r.from ? STAGES[r.from] + " → " : ""}${STAGES[r.to]}</td>${o === "C" ? `<td>${esc(r.note) || "—"}</td>` : ""}</tr>`).join("")}</table>
+    <div class="count">${s.history.length} history row(s) stored</div>`;
+  const qa = HistoryLogic.answers(st, o, focus).map(x =>
+    `<li><div class="q">${x.q}</div><div class="${x.unknown ? "unknown" : ""}">${esc(x.a)}</div></li>`).join("");
+  return `<div class="card">
+    <h2>${title}</h2><div class="sub">${sub}</div>
+    <h3>What just happened</h3>${msgBox(s.msg)}
+    <h3>Applications</h3>
+    <table><tr><th>Candidate</th><th>Stage</th>${o === "A" ? "<th>Closed from</th>" : ""}</tr>${appRows}</table>
+    <h3>Stage history</h3>${history}
+    <h3>Questions about ${APPS[focus].split(" ")[0]}</h3><ul class="qa">${qa}</ul>
+  </div>`;
+}
+
+function renderAside() {
+  const tabs = `<div class="tabs"><button data-tab="free" class="${tab === "free" ? "on" : ""}">Free play</button>${
+    SCENARIOS.map((sc, i) => `<button data-tab="${sc.id}" class="${tab === sc.id ? "on" : ""}">${i + 1}. ${sc.title}</button>`).join("")}</div>`;
+  if (tab === "free") {
+    return tabs + `<h2 style="font-size:16px;margin:0">Free play</h2>
+      <div class="row">
+        <div><label>Staff member</label><select id="fUser"><option>Priya</option><option>Sam</option></select></div>
+        <div><label>Application</label><select id="fApp">${Object.keys(APPS).map(id => `<option value="${id}" ${id === focus ? "selected" : ""}>${APPS[id]}</option>`).join("")}</select></div>
+      </div>
+      <label>Reason (C requires one to reject, withdraw, or reopen)</label><input id="fNote" placeholder="e.g. Weak SQL skills">
+      <label>Server behavior for the next move</label>
+      <select id="fCrash"><option value="none">Normal</option><option value="noTx">Crashes halfway, with no transaction</option><option value="atomic">Crashes halfway, inside a transaction</option></select>
+      <div class="row">
+        <button class="btn" data-verb="advance">Advance →</button>
+        <button class="btn secondary" data-verb="back">← Back one</button>
+        <button class="btn secondary" data-verb="reject">Reject</button>
+        <button class="btn secondary" data-verb="withdraw">Withdraw</button>
+      </div>
+      <button class="btn secondary" data-verb="reopen">↺ Reopen</button>
+      <div class="row"><button class="btn secondary" id="fWait1">1 day passes</button><button class="btn secondary" id="fWait5">5 days pass</button></div>
+      <button class="btn secondary" id="fReset">Start over</button>`;
+  }
+  const sc = SCENARIOS.find(x => x.id === tab);
+  return tabs + `<div class="scenario"><h2 style="font-size:16px;margin:0 0 6px">${sc.title}</h2>
+    <p>${sc.text}</p><div class="watch"><strong>Watch for:</strong> ${sc.watch}</div>
+    ${sc.steps.map((s, i) => `<button class="btn ${i < progress ? "done" : ""}" data-step="${i}" ${i === progress ? "" : "disabled"}>${i < progress ? "✓ " : `${i + 1}. `}${esc(s.label)}</button>`).join("")}
+    <button class="btn secondary" data-restart="1">Restart this scenario</button>
+    ${progress === sc.steps.length ? `<p style="margin-top:12px;color:var(--muted)">Done. Compare the three columns.</p>` : ""}</div>`;
+}
+
+function render() {
+  document.getElementById("clock").innerHTML = `<span>Today is <strong>day ${st.day}</strong></span><span>Showing questions about: <strong>${APPS[focus]}</strong></span>`;
+  document.getElementById("cols").innerHTML =
+    column("A", "A · Current stage + “closed from”", "One extra field. Each move overwrites the last.") +
+    column("B", "B · History table", "Every move adds a row: who, when, from, to.") +
+    column("C", "C · History + required reason", "Like B, but rejecting, withdrawing, or reopening needs a reason.");
+  document.getElementById("aside").innerHTML = renderAside();
+}
+
+document.getElementById("aside").addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  const val = (id) => document.getElementById(id).value;
+  if (t.dataset.tab) { if (t.dataset.tab === "free") { tab = "free"; render(); } else startScenario(t.dataset.tab); return; }
+  if (t.dataset.restart) { startScenario(tab); return; }
+  if (t.dataset.step) { const sc = SCENARIOS.find(x => x.id === tab); progress++; sc.steps[+t.dataset.step].run(); return; }
+  if (t.dataset.verb) dispatch({ type: "move", user: val("fUser"), app: val("fApp"), verb: t.dataset.verb, note: val("fNote"), crash: val("fCrash") });
+  if (t.id === "fWait1") dispatch({ type: "wait", days: 1 });
+  if (t.id === "fWait5") dispatch({ type: "wait", days: 5 });
+  if (t.id === "fReset") { st = HistoryLogic.initial(); render(); }
+});
+document.getElementById("aside").addEventListener("change", (e) => { if (e.target.id === "fApp") { focus = e.target.value; render(); } });
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Stage move rules</title>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 min-h-screen pb-24">
+
+<!-- ===================== RULES (pure logic, no page code) ===================== -->
+<script>
+const STAGES = {
+  APPLIED: "Applied", SCREENING: "Screening", INTERVIEW: "Interview", FINAL_REVIEW: "Final Review",
+  OFFER: "Offer", HIRED: "Hired", REJECTED: "Rejected", WITHDRAWN: "Withdrawn",
+};
+const ACTIVE = ["APPLIED", "SCREENING", "INTERVIEW", "FINAL_REVIEW", "OFFER"];
+const FINAL = ["HIRED", "REJECTED", "WITHDRAWN"];
+
+const VARIANTS = [
+  { key: "B",  name: "Strict one-step",
+    tagline: "Move forward one stage at a time. Rejected, Withdrawn, and Hired are permanent." },
+  { key: "B+", name: "One-step + back (recommended)",
+    tagline: "Move forward one stage, or back one stage to fix a mis-click. Rejected, Withdrawn, and Hired are permanent." },
+  { key: "C",  name: "Flexible",
+    tagline: "Skip forward to any later stage, step back one, and reopen a Rejected or Withdrawn application (with a confirmation). Hired is permanent." },
+];
+
+const Rules = {
+  // Every move the UI may offer for this application under this variant.
+  moves(variant, app) {
+    const i = ACTIVE.indexOf(app.stage);
+    if (i === -1) {
+      if (variant === "C" && app.stage !== "HIRED" && app.prev) return [{ to: app.prev, kind: "reopen" }];
+      return [];
+    }
+    const next = i < ACTIVE.length - 1 ? ACTIVE[i + 1] : "HIRED";
+    const out = [];
+    if (variant === "C") {
+      for (const to of [...ACTIVE.slice(i + 1), "HIRED"]) out.push({ to, kind: to === next ? "next" : "skip" });
+    } else {
+      out.push({ to: next, kind: "next" });
+    }
+    if (variant !== "B" && i > 0) out.push({ to: ACTIVE[i - 1], kind: "back" });
+    out.push({ to: "REJECTED", kind: "reject" }, { to: "WITHDRAWN", kind: "withdraw" });
+    return out;
+  },
+
+  // The server-side check: refuse anything not in moves(). Returns new list + log entry, or an error.
+  move(variant, apps, id, to) {
+    const app = apps.find(a => a.id === id);
+    const m = Rules.moves(variant, app).find(x => x.to === to);
+    if (!m) return { error: `Not allowed: ${STAGES[app.stage]} → ${STAGES[to]}` };
+    const updated = { ...app, stage: to, prev: FINAL.includes(to) ? app.stage : null };
+    return {
+      apps: apps.map(a => (a.id === id ? updated : a)),
+      entry: { name: app.name, from: app.stage, to, kind: m.kind },
+    };
+  },
+
+  // For the rules table: what kind of move (if any) goes from one stage to another.
+  table(variant) {
+    const t = {};
+    for (const from of Object.keys(STAGES)) {
+      t[from] = {};
+      if (variant === "C" && (from === "REJECTED" || from === "WITHDRAWN")) {
+        for (const to of ACTIVE) t[from][to] = "reopen";
+        continue;
+      }
+      for (const m of Rules.moves(variant, { stage: from })) t[from][m.to] = m.kind;
+    }
+    return t;
+  },
+};
+
+const seed = () => [
+  { id: 1, name: "Ana Lopez",   source: "Company Website",          stage: "APPLIED" },
+  { id: 2, name: "Ben Okafor",  source: "Job Board · Indeed",       stage: "APPLIED" },
+  { id: 3, name: "Chloe Kim",   source: "Referral · Maria",         stage: "SCREENING" },
+  { id: 4, name: "Dev Patel",   source: "Job Board · LinkedIn",     stage: "INTERVIEW" },
+  { id: 5, name: "Erin Shaw",   source: "Company Website",          stage: "FINAL_REVIEW" },
+  { id: 6, name: "Femi Ade",    source: "Referral · Sam",           stage: "OFFER" },
+  { id: 7, name: "Gia Rossi",   source: "Job Board · LinkedIn",     stage: "HIRED", prev: "OFFER" },
+  { id: 8, name: "Hana Mori",   source: "Other · Career Fair 2026", stage: "REJECTED", prev: "INTERVIEW" },
+  { id: 9, name: "Ivan Petrov", source: "Job Board · Indeed",       stage: "WITHDRAWN", prev: "SCREENING" },
+].map(a => ({ prev: null, ...a }));
+</script>
+
+<!-- ===================== PAGE SHELL ===================== -->
+<div class="navbar bg-base-100 border-b border-base-300 px-6">
+  <div class="flex-1 gap-6 flex items-center">
+    <span class="font-bold text-lg">ATS</span>
+    <ul class="menu menu-horizontal px-1 text-sm">
+      <li><a>Candidates</a></li><li><a>Job Openings</a></li><li><a class="menu-active">Pipeline</a></li>
+    </ul>
+  </div>
+  <span class="badge badge-warning badge-sm">Throwaway prototype</span>
+</div>
+
+<main class="px-6 py-5 max-w-[1500px] mx-auto">
+  <div class="flex flex-wrap items-end justify-between gap-3 mb-1">
+    <div>
+      <div class="text-sm text-base-content/60">Job opening</div>
+      <h1 class="text-2xl font-bold">Data Analyst <span class="badge badge-success badge-sm align-middle ml-1">Open</span></h1>
+    </div>
+    <button class="btn btn-sm btn-ghost" id="reset">Reset this variant's data</button>
+  </div>
+  <div id="variantInfo" class="mb-4"></div>
+  <div id="lastMove" class="mb-4"></div>
+  <div id="board" class="grid grid-cols-6 gap-3 overflow-x-auto"></div>
+
+  <div class="grid lg:grid-cols-3 gap-4 mt-6">
+    <div class="card bg-base-100 border border-base-300 lg:col-span-2">
+      <div class="card-body p-4">
+        <h2 class="card-title text-base">Rules in this variant</h2>
+        <p class="text-sm text-base-content/60 -mt-1">Read across a row: from that stage, which stages can you move to? This is exactly the table the server would check.</p>
+        <div id="rules" class="overflow-x-auto"></div>
+      </div>
+    </div>
+    <div class="card bg-base-100 border border-base-300">
+      <div class="card-body p-4">
+        <h2 class="card-title text-base">Activity <span id="moveCount" class="badge badge-ghost badge-sm"></span></h2>
+        <ul id="activity" class="text-sm space-y-1"></ul>
+      </div>
+    </div>
+  </div>
+  <p class="text-xs text-base-content/50 mt-4">In the real app, every button here would be an HTMX request that changes only that card. This prototype keeps everything in memory, and nothing is saved.</p>
+</main>
+
+<dialog id="confirm" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg" id="confirmTitle"></h3>
+    <p class="py-3" id="confirmBody"></p>
+    <div class="modal-action">
+      <button class="btn btn-ghost" id="confirmNo">Cancel</button>
+      <button class="btn" id="confirmYes"></button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Variant switcher (not part of the design being judged) -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-neutral-900 text-white px-3 py-2 shadow-xl text-sm" style="font-family: ui-monospace, monospace">
+  <button id="prevV" class="px-2 hover:text-yellow-300">←</button>
+  <span id="vLabel" class="min-w-64 text-center"></span>
+  <button id="nextV" class="px-2 hover:text-yellow-300">→</button>
+</div>
+
+<script>
+const state = {};
+for (const v of VARIANTS) state[v.key] = { apps: seed(), log: [], last: null };
+let vi = Math.max(0, VARIANTS.findIndex(v => v.key === localStorage.getItem("stageMovesVariant")));
+let pending = null;
+
+const V = () => VARIANTS[vi];
+const S = () => state[V().key];
+const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const KIND_TEXT = { next: "advanced", skip: "skipped ahead", back: "moved back", reject: "rejected", withdraw: "withdrew", reopen: "reopened" };
+const KIND_BADGE = { next: "badge-primary", skip: "badge-secondary", back: "badge-warning", reject: "badge-error", withdraw: "badge-neutral", reopen: "badge-info" };
+
+function doMove(id, to) {
+  const s = S();
+  const r = Rules.move(V().key, s.apps, id, to);
+  if (r.error) { s.last = { error: r.error }; render(); return; }
+  s.apps = r.apps; s.log.unshift(r.entry); s.last = { ...r.entry, id };
+  render();
+}
+
+function ask(title, body, yesLabel, yesClass, action) {
+  pending = action;
+  document.getElementById("confirmTitle").textContent = title;
+  document.getElementById("confirmBody").textContent = body;
+  const yes = document.getElementById("confirmYes");
+  yes.textContent = yesLabel; yes.className = "btn " + yesClass;
+  document.getElementById("confirm").showModal();
+}
+
+function requestMove(id, to) {
+  const app = S().apps.find(a => a.id === id);
+  const m = Rules.moves(V().key, app).find(x => x.to === to);
+  const permanent = V().key !== "C";
+  if ((m.kind === "reject" || m.kind === "withdraw") && permanent) {
+    ask(`${m.kind === "reject" ? "Reject" : "Withdraw"} ${app.name}?`,
+      `This is permanent. In this variant, a ${STAGES[to]} application can never be moved again.`,
+      m.kind === "reject" ? "Reject permanently" : "Mark withdrawn", m.kind === "reject" ? "btn-error" : "btn-neutral",
+      () => doMove(id, to));
+  } else if (m.kind === "reopen") {
+    ask(`Reopen ${app.name}'s application?`,
+      `It is currently ${STAGES[app.stage]}. Reopening sends it back to ${STAGES[to]}, the stage it was in before it was closed.`,
+      `Reopen to ${STAGES[to]}`, "btn-info", () => doMove(id, to));
+  } else if (to === "HIRED" && V().key === "C" && m.kind === "skip") {
+    ask(`Mark ${app.name} as Hired?`, `This skips straight from ${STAGES[app.stage]} to Hired. Hired is permanent.`,
+      "Mark hired", "btn-success", () => doMove(id, to));
+  } else {
+    doMove(id, to);
+  }
+}
+
+/* ---------- card controls: the part that differs per variant ---------- */
+function controls(app) {
+  const v = V().key;
+  const moves = Rules.moves(v, app);
+  if (!moves.length) return `<div class="text-xs text-base-content/50 flex items-center gap-1">🔒 Final, cannot be moved</div>`;
+
+  if (v === "C") {
+    if (moves[0].kind === "reopen") {
+      return `<button class="btn btn-xs btn-outline btn-info" data-move="${app.id}|${moves[0].to}">↺ Reopen…</button>`;
+    }
+    const group = (label, kinds) => {
+      const items = moves.filter(m => kinds.includes(m.kind));
+      return items.length ? `<optgroup label="${label}">${items.map(m =>
+        `<option value="${m.to}">${m.kind === "reject" ? "Reject" : m.kind === "withdraw" ? "Withdrawn" : STAGES[m.to]}</option>`).join("")}</optgroup>` : "";
+    };
+    return `<div class="join w-full">
+      <select class="select select-xs join-item flex-1" id="sel-${app.id}">
+        ${group("Forward", ["next", "skip"])}${group("Back", ["back"])}${group("Close", ["reject", "withdraw"])}
+      </select>
+      <button class="btn btn-xs btn-primary join-item" data-movesel="${app.id}">Move</button>
+    </div>`;
+  }
+
+  const next = moves.find(m => m.kind === "next");
+  const back = moves.find(m => m.kind === "back");
+  return `<div class="flex flex-col gap-1">
+    <button class="btn btn-xs btn-primary w-full" data-move="${app.id}|${next.to}">${next.to === "HIRED" ? "Mark Hired ✓" : `Advance to ${STAGES[next.to]} →`}</button>
+    <div class="flex gap-1">
+      ${back ? `<button class="btn btn-xs btn-ghost flex-1" data-move="${app.id}|${back.to}">← Back to ${STAGES[back.to]}</button>` : ""}
+      <div class="dropdown dropdown-end ${back ? "" : "flex-1"}">
+        <div tabindex="0" role="button" class="btn btn-xs btn-ghost w-full">Close ▾</div>
+        <ul tabindex="0" class="dropdown-content menu menu-sm bg-base-100 rounded-box z-10 w-36 p-1 shadow border border-base-300">
+          <li><a data-move="${app.id}|REJECTED" class="text-error">Reject</a></li>
+          <li><a data-move="${app.id}|WITHDRAWN">Withdrawn</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>`;
+}
+
+function card(app) {
+  const s = S();
+  const isNew = s.last && s.last.id === app.id;
+  const closedBadge = FINAL.includes(app.stage)
+    ? `<span class="badge badge-xs ${app.stage === "HIRED" ? "badge-success" : app.stage === "REJECTED" ? "badge-error" : "badge-neutral"}">${STAGES[app.stage]}</span>
+       ${app.prev ? `<span class="text-[11px] text-base-content/50">from ${STAGES[app.prev]}</span>` : ""}` : "";
+  return `<div class="card bg-base-100 border ${isNew ? "border-warning ring-2 ring-warning/40" : "border-base-300"} shadow-sm">
+    <div class="card-body p-3 gap-2">
+      <div>
+        <div class="font-semibold text-sm">${esc(app.name)}</div>
+        <div class="text-xs text-base-content/60">${esc(app.source)}</div>
+        ${closedBadge ? `<div class="mt-1 flex items-center gap-1">${closedBadge}</div>` : ""}
+      </div>
+      ${controls(app)}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const v = V(), s = S();
+  localStorage.setItem("stageMovesVariant", v.key);
+  document.getElementById("vLabel").textContent = `${vi + 1}/${VARIANTS.length} · ${v.key} · ${v.name}`;
+  document.getElementById("variantInfo").innerHTML =
+    `<div class="alert bg-base-100 border-base-300 py-2 text-sm"><span><strong>Variant ${v.key}:</strong> ${v.tagline}</span></div>`;
+
+  document.getElementById("lastMove").innerHTML = !s.last
+    ? `<div class="text-sm text-base-content/50">No moves yet. Try advancing Ana, rejecting Ben, or reopening Hana.</div>`
+    : s.last.error
+      ? `<div class="alert alert-error py-2 text-sm">${esc(s.last.error)}</div>`
+      : `<div class="alert alert-success py-2 text-sm">Last move: <strong>${esc(s.last.name)}</strong> ${STAGES[s.last.from]} → ${STAGES[s.last.to]} (${KIND_TEXT[s.last.kind]})</div>`;
+
+  const cols = [...ACTIVE.map(k => ({ title: STAGES[k], apps: s.apps.filter(a => a.stage === k) })),
+    { title: "Closed", apps: s.apps.filter(a => FINAL.includes(a.stage)), closed: true }];
+  document.getElementById("board").innerHTML = cols.map(c => `
+    <section class="min-w-48 rounded-box ${c.closed ? "bg-base-300/60" : "bg-base-300/30"} p-2">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/60 px-1 mb-2 flex justify-between">
+        <span>${c.title}</span><span class="badge badge-ghost badge-xs">${c.apps.length}</span></h3>
+      <div class="flex flex-col gap-2">${c.apps.map(card).join("") || `<div class="text-xs text-base-content/40 px-1 py-4 text-center">Empty</div>`}</div>
+    </section>`).join("");
+
+  const t = Rules.table(v.key);
+  const SYM = { next: ["→", "text-primary"], skip: ["»", "text-secondary"], back: ["←", "text-warning"],
+    reject: ["✕", "text-error"], withdraw: ["✕", "text-base-content/60"], reopen: ["↺", "text-info"] };
+  const keys = Object.keys(STAGES);
+  document.getElementById("rules").innerHTML = `
+    <table class="table table-xs text-center">
+      <thead><tr><th class="text-left">From ↓ / To →</th>${keys.map(k => `<th>${STAGES[k]}</th>`).join("")}</tr></thead>
+      <tbody>${keys.map(f => `<tr><th class="text-left">${STAGES[f]}</th>${keys.map(to => {
+        const k = t[f][to]; return `<td class="${k ? SYM[k][1] + " font-bold" : "text-base-content/20"}">${k ? SYM[k][0] : "·"}</td>`;
+      }).join("")}</tr>`).join("")}</tbody>
+    </table>
+    <div class="text-xs text-base-content/60 mt-2 flex flex-wrap gap-x-4">
+      <span><b class="text-primary">→</b> next stage</span><span><b class="text-secondary">»</b> skip ahead</span>
+      <span><b class="text-warning">←</b> back one</span><span><b class="text-error">✕</b> close (reject / withdraw)</span>
+      <span><b class="text-info">↺</b> reopen, only to the stage it was closed from</span>
+      <span>Allowed moves: <b>${keys.reduce((n, f) => n + Object.keys(t[f]).length, 0)}</b> (each one is a test case)</span>
+    </div>`;
+
+  document.getElementById("moveCount").textContent = `${s.log.length} move(s)`;
+  document.getElementById("activity").innerHTML = s.log.length
+    ? s.log.map(e => `<li class="flex items-center gap-2"><span class="badge badge-xs ${KIND_BADGE[e.kind]}">${KIND_TEXT[e.kind]}</span>
+        <span><b>${esc(e.name)}</b> ${STAGES[e.from]} → ${STAGES[e.to]}</span></li>`).join("")
+    : `<li class="text-base-content/50">Nothing yet.</li>`;
+}
+
+/* ---------- events ---------- */
+document.getElementById("board").addEventListener("click", (e) => {
+  const mv = e.target.closest("[data-move]");
+  if (mv) { const [id, to] = mv.dataset.move.split("|"); document.activeElement?.blur(); requestMove(+id, to); return; }
+  const ms = e.target.closest("[data-movesel]");
+  if (ms) { const id = +ms.dataset.movesel; requestMove(id, document.getElementById(`sel-${id}`).value); }
+});
+document.getElementById("confirmYes").onclick = () => { document.getElementById("confirm").close(); const p = pending; pending = null; p && p(); };
+document.getElementById("confirmNo").onclick = () => { document.getElementById("confirm").close(); pending = null; };
+document.getElementById("reset").onclick = () => { state[V().key] = { apps: seed(), log: [], last: null }; render(); };
+
+const go = (d) => { vi = (vi + d + VARIANTS.length) % VARIANTS.length; render(); };
+document.getElementById("prevV").onclick = () => go(-1);
+document.getElementById("nextV").onclick = () => go(1);
+document.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+  if (document.getElementById("confirm").open) return;
+  if (e.key === "ArrowLeft") go(-1);
+  if (e.key === "ArrowRight") go(1);
+});
+
+render();
+</script>
+</body>
+</html>
