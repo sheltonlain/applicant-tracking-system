@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Candidates · ATS{% endblock %}
+
+{% block content %}
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="card-title text-2xl">Candidates</h1>
+      <a href="{% url 'candidates:create' %}" class="btn btn-sm btn-primary">New candidate</a>
+    </div>
+
+    {# Works as a plain GET form without JavaScript; with HTMX it searches as you type.          #}
+    {# Each search pushes a Back-button step, so the 500 ms pause keeps half-typed words out of it. #}
+    <form method="get" action="{% url 'candidates:list' %}" class="mt-4" role="search">
+      <label class="input w-full max-w-md">
+        <span class="sr-only">Search candidates</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by name or email"
+               autocomplete="off"
+               hx-get="{% url 'candidates:list' %}"
+               hx-trigger="input changed delay:500ms, search"
+               hx-target="#candidate-results"
+               hx-swap="outerHTML"
+               hx-push-url="true">
+      </label>
+    </form>
+
+    {% include "candidates/partials/candidate_results.html" %}
+  </div>
+</div>
+{% endblock %}

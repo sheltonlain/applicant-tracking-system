@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Applicant Tracking System{% endblock %}</title>
+  {# No HTMX history snapshots: Back re-fetches the page from the server, so a restored page is never  #}
+  {# stale (a snapshot can pair an old search box with newer results), and candidate data is never    #}
+  {# copied into localStorage. Views that push URLs must return the full page for history restores.  #}
+  <meta name="htmx-config" content='{"historyCacheSize": 0}'>
   {% tailwind_css %}
   <script src="{% static 'js/htmx.min.js' %}" defer></script>
 </head>
@@ -12,6 +16,7 @@
   <div class="navbar bg-base-100 shadow-sm">
     <div class="flex-1">
       <a href="{% url 'applications:dashboard' %}" class="btn btn-ghost text-xl">ATS</a>
+      <a href="{% url 'candidates:list' %}" class="btn btn-ghost">Candidates</a>
     </div>
     <div class="flex-none flex items-center gap-2">
       <a href="{% url 'candidates:create' %}" class="btn btn-sm btn-primary">New candidate</a>

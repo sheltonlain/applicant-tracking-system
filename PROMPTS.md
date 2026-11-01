@@ -28,6 +28,44 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 3: candidate list with live search
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 3`
+2. yes, go ahead with those three
+3. Can you elaborate more on this choice before I make my decision?
+4. go with option B
+5. yes, make it pass
+6. yes, move on to behavior 2
+7. yes, make it pass
+8. yes, move on to behavior 3
+9. yes, make it pass
+10. yes, go ahead
+11. I could not get the code to run in the shell.
+12. The back button does not work right. When I search jane, then bob, the press back, I return to a page with jane in the box but with the results still for bob
+13. The back button works better now. When I press back, the box shows b first, and then when I press back again it shows jane in the box and the table. When I go forward, it again goes to b first and then when I go forward again it is bob in the box and the table
+14. *(Answered a multiple-choice question)* Longer pause (Recommended)
+15. the back button works now and all other steps passed
+
+### Summary
+- **Outcome:** Built Phase 3 of the plan.
+  - Added the candidate list at `/candidates/`, sorted by last name then first name, 25 per page, with a "Candidates" link in the navbar.
+  - Search lives in a new `candidates/services.py` (`search_candidates`). Every word typed must appear in the first name, last name, or email, ignoring case and word order.
+  - The search box is a plain GET form with HTMX added: a 500 ms pause, swapping only `#candidate-results`, and `hx-push-url`. The results table is one partial (`candidates/partials/candidate_results.html`) used for both full pages and HTMX responses.
+  - Page links use Django's `{% querystring %}` tag, so they keep the search (and will keep Phase 12's "Show archived" too).
+  - The view returns the full page for HTMX Back-button history restores. `base.html` turns off HTMX's history snapshot cache (`historyCacheSize: 0`) app-wide.
+  - Added 10 list tests. 43 tests pass and Ruff is clean. The user manually verified every step, and all 5 acceptance criteria were ticked.
+- **Deviations:**
+  - The agent picked three TDD behaviors, all approved: search by name or email ignoring case, HTMX requests get only the partial, and page links keep the search.
+  - Follow-up question: the user asked for more detail on how multi-word searches should work. The agent compared three options with examples (each field separately, every word must match some field, and a joined full name). It recommended B because live search would otherwise empty the list mid-name ("jane d"), and the user chose B. The test was extended and re-approved before going green.
+  - Back-button question: the agent offered three options (a longer pause, replacing the URL instead of pushing it, or keeping it as is). The user chose the recommended longer pause.
+- **Sideways:**
+  - The agent's seed-data snippet for manual testing failed in the interactive Django shell because it had no blank line after the `for` loop. Two more attempts failed on PowerShell 5.1 quoting and an invisible byte-order mark (U+FEFF) added when piping. The agent finally loaded the data from a scratch file through Bash.
+  - Manual testing found a Back-button bug the tests had missed: the box showed "jane" while the table showed "bob". After reading the HTMX 2.0.4 source, the agent found that HTMX's localStorage snapshots copy only the page's HTML, which doesn't record typed text. The fix was turning off the snapshot cache so Back re-fetches from the server. The agent noted it had only verified this with tests and reading the source; the user confirmed it in the browser.
+  - The user then found extra "b" Back-button steps caused by pauses mid-word under the 300 ms delay. This was resolved by the 500 ms pause the user chose; a long pause mid-word can still add a step.
+  - Ruff flagged import spacing in `views.py` once; `ruff check --fix` fixed it.
+  - The PROMPTS.md rule says entries are added only by its logging prompt. This entry was written because the `/implement` skill's finish step asks for it.
+
 ## 2026-11-01 — Added acceptance-criteria check to the implement skill; verified and committed Phase 2
 
 ### Prompts

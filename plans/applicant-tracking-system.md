@@ -80,11 +80,11 @@ A candidate list at `/candidates/`, sorted by last name, 25 per page. A search b
 
 ### Acceptance criteria
 
-- [ ] List is sorted by last name and paginated at 25
-- [ ] Typing in search updates only the results table without a full reload
-- [ ] The URL reflects the search query; loading that URL directly shows the same results
-- [ ] HTMX requests receive only the results partial; normal requests receive the full page
-- [ ] Pagination preserves the search query
+- [x] List is sorted by last name and paginated at 25
+- [x] Typing in search updates only the results table without a full reload
+- [x] The URL reflects the search query; loading that URL directly shows the same results
+- [x] HTMX requests receive only the results partial; normal requests receive the full page
+- [x] Pagination preserves the search query
 
 ---
 
