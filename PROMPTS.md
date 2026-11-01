@@ -28,6 +28,20 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Added commands and app ownership to CLAUDE.md after Phase 1
+
+### Prompts
+1. Update CLAUDE.md. Keep it concise and include information regarding useful commands, the Django apps that now exist, and what each app owns. We do not want a verbose explanation. We want to add as little as possible to this file and only include information that is needed while keeping the explanantions basic and to the point.
+2. Yes, commit and push it
+3. update PROMPTS.md
+
+### Summary
+- **Outcome:** `CLAUDE.md` went from 28 to 38 lines. Added a Commands section (dev server with the Tailwind watcher, pytest, Ruff lint and format) and an Apps section that lists `config/` and what each of the three apps owns. This Apps section replaced the old "Three Django apps" bullet. The auth bullet now names `LoginRequiredMiddleware`. Committed and pushed as `390564d`.
+- **Deviations:** None. The agent asked before committing, and the user approved.
+- **Sideways:**
+  - The Apps section lists what each app will own according to the PRD (Candidate, JobOpening, Application, and so on), but those models don't exist yet. The agent pointed this out when presenting the change, and it was kept so that later phases put code in the right app.
+  - This session continued from the Phase 1 session below. It got its own entry so the earlier entry stays unchanged.
+
 ## 2026-11-01 — Implemented Phase 1: project skeleton and accounts
 
 ### Prompts
