@@ -28,6 +28,51 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Added acceptance-criteria check to the implement skill; verified and committed Phase 2
+
+### Prompts
+1. Add code to .claude/skills/implement that ensures we verify and tick off the acceptance criteria in plans/applicant-tracking-system before we commit and push our changes
+2. Yes, tick Phase 1 too
+3. Manual verification passed, tick Phase 2 and commit
+
+### Summary
+- **Outcome:**
+  - Added a new step 5, "Verify the Acceptance Criteria", to `.claude/skills/implement/SKILL.md`. After the user confirms manual verification, the agent re-runs the tests, matches each criterion to a passing test or a confirmed manual step, shows a table, and ticks the met criteria in the plan. Any unmet criterion blocks the commit unless the user accepts it. "Finish the Phase" became step 6, and its commit now includes the ticked plan.
+  - Ticked all Phase 1 criteria in the plan, based on the user's earlier manual verification recorded below.
+  - The user confirmed Phase 2's manual verification. The agent re-ran the suite (33 passed, Ruff clean) and showed all 7 Phase 2 criteria as met, each with named tests and manual steps. It then ticked them and committed and pushed Phase 2.
+- **Deviations:** None. The agent suggested ticking Phase 1 too, and the user agreed.
+- **Sideways:**
+  - The Phase 2 entry below was written before the user confirmed verification, so it says nothing was committed yet. Following the rule against rewriting entries, this new entry records the confirmation and commit instead of editing that one.
+
+## 2026-11-01 — Implemented Phase 2: create, view, and edit candidates
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement phase 2`
+2. Yes, go ahead with those two
+3. Yes, make it pass
+4. Yes, move on to behavior 2
+5. Yes, accept it as RED and make it pass
+6. Is there any way to turn the crash into a friendly message in the admin form you mentioned?
+7. Yes, make the clean() change and register Candidate in admin
+8. Yes, finish the rest of Phase 2
+9. Update PRMOPTS.md
+
+### Summary
+- **Outcome:** Built Phase 2 of the plan.
+  - Added the `Candidate` model and its migration: first and last name, email (unique, stored lowercase), phone as free text, LinkedIn/portfolio URL, notes, timestamps, and a `full_name` helper.
+  - Added `CandidateForm` and the create, detail, and edit views at `/candidates/new/`, `/candidates/<pk>/`, and `/candidates/<pk>/edit/`, with DaisyUI templates. Creating a candidate redirects to their detail page.
+  - Lowercasing happens in two places. `Candidate.clean()` runs before Django's uniqueness check, so every model form (the app's and the admin's) shows a friendly email error for a duplicate in different case. `save()` also lowercases, for code that saves without a form.
+  - Registered `Candidate` in the admin. Added a "New candidate" button to the navbar. The shared `form_fields.html` partial now renders textareas, for the notes field.
+  - Added `CandidateFactory` and view, model, and admin tests. 33 tests pass, and Ruff and `manage.py check` are clean. The manual verification steps were given to the user, but the user had not yet confirmed them when this entry was written. Nothing has been committed yet.
+- **Deviations:**
+  - The agent picked two TDD behaviors, both approved: (1) creating a candidate stores the email lowercase and redirects to the detail page; (2) a duplicate email in different case is refused with a form error on both create and edit.
+  - Follow-up question: the user asked whether the admin could show a friendly message instead of a crash for a duplicate email. The agent recommended moving the lowercasing from `CandidateForm.clean_email()` into `Candidate.clean()` and ranked two other options lower: giving the admin `CandidateForm`, and a database constraint on `Lower("email")`. The user chose the recommendation and also asked to register `Candidate` in the admin, which the plan did not require.
+- **Sideways:**
+  - Behavior 2's first run failed with an `IntegrityError` (a database crash), not an assertion, so under the TDD rules it was not a clean RED. The agent said so instead of counting it quietly. It explained that the crash *was* the missing behavior, because the form let the duplicate through and the database rejected it. The user accepted it as RED.
+  - The first run of the new admin test errored because it lacked the `db` fixture. That was a mechanical fix.
+  - To prove the admin test guards something, the agent temporarily disabled `Candidate.clean()`. Both the admin test and the behavior 2 test then crashed with the database error. The agent restored the file and all tests passed again.
+  - Ruff's Django rule (DJ012) flagged the model's method order. The agent reordered the methods, with no change in behavior.
+
 ## 2026-11-01 — Added commands and app ownership to CLAUDE.md after Phase 1
 
 ### Prompts

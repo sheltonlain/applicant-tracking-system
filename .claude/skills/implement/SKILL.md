@@ -26,6 +26,23 @@ Run the test suite, linter, and formatter. Refactor the code as needed. If the t
 
 Outline the steps to manually verify that the implementation meets the requirements. Stop and ask for confirmation before proceeding to the next phase.
 
-## 5. Finish the Phase
+## 5. Verify the Acceptance Criteria
 
-Update PROMPTS.md using the format specified in that file. Then commit the completed phase with a message like "Implement <feature> phase <N>". Push the commit to GitHub. 
+Do this only after the user confirms the manual verification. Do not commit or push before
+this step is complete.
+
+1. Re-read the phase's acceptance criteria in the referenced plan.
+2. For each criterion, name its evidence: a passing test (file and test name) or a manual
+   step the user confirmed. Re-run the test suite so the test evidence is current.
+3. Show the criteria as a table: criterion, evidence, met or not met.
+4. Tick each met criterion in the plan by changing `- [ ]` to `- [x]`. Change only that
+   phase's checkboxes and nothing else in the plan.
+5. If any criterion is not met or has no evidence, leave it unticked, say what is missing,
+   and stop. Do not commit until the gap is fixed or the user explicitly accepts it.
+
+## 6. Finish the Phase
+
+Continue only when every acceptance criterion for the phase is ticked, or the user has
+explicitly accepted the unticked ones. Update PROMPTS.md using the format specified in that
+file. Then commit the completed phase, including the ticked plan, with a message like
+"Implement <feature> phase <N>". Push the commit to GitHub.

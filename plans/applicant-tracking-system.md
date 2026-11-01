@@ -39,14 +39,14 @@ A running Django project managed with uv, with the three apps registered, Tailwi
 
 ### Acceptance criteria
 
-- [ ] `uv run` starts the dev server; styled login page appears at `/accounts/login/`
-- [ ] Anonymous request to `/` redirects to login; logged-in request shows the placeholder home with the username in the navbar
-- [ ] Logout ends the session
-- [ ] Password change works while logged in
-- [ ] Password reset sends an email to the console and the full reset flow completes
-- [ ] An inactive user cannot log in
-- [ ] Staff accounts can be created and deactivated in the admin
-- [ ] `pytest` and `ruff check` run cleanly; staff-user and logged-in-client fixtures exist
+- [x] `uv run` starts the dev server; styled login page appears at `/accounts/login/`
+- [x] Anonymous request to `/` redirects to login; logged-in request shows the placeholder home with the username in the navbar
+- [x] Logout ends the session
+- [x] Password change works while logged in
+- [x] Password reset sends an email to the console and the full reset flow completes
+- [x] An inactive user cannot log in
+- [x] Staff accounts can be created and deactivated in the admin
+- [x] `pytest` and `ruff check` run cleanly; staff-user and logged-in-client fixtures exist
 
 ---
 
@@ -60,13 +60,13 @@ Staff can create a candidate, see their detail page, and edit them. Emails are s
 
 ### Acceptance criteria
 
-- [ ] `Candidate` model and migration exist; candidate factory exists
-- [ ] Creating a candidate redirects to its detail page
-- [ ] `Jane@Example.com` is stored as `jane@example.com`
-- [ ] A second candidate with the same email in different case is refused with a form error (create and edit)
-- [ ] Phone numbers in any format (international, extensions) are accepted
-- [ ] Detail page shows full name, contact details, and notes
-- [ ] All candidate views require login
+- [x] `Candidate` model and migration exist; candidate factory exists
+- [x] Creating a candidate redirects to its detail page
+- [x] `Jane@Example.com` is stored as `jane@example.com`
+- [x] A second candidate with the same email in different case is refused with a form error (create and edit)
+- [x] Phone numbers in any format (international, extensions) are accepted
+- [x] Detail page shows full name, contact details, and notes
+- [x] All candidate views require login
 
 ---
 
