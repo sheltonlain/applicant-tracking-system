@@ -31,6 +31,7 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - All stage moves go through one service function that updates the stage and writes history in a single transaction.
 - Django's built-in auth and default User model; `LoginRequiredMiddleware` makes every view require login except login and password-reset pages.
 - Stage, source, and other fixed lists are stored as code-defined choices.
+- HTMX lists: one results partial serves full and HTMX responses; views return the full page for history-restore requests (HTMX history cache is off in `base.html`); page links use `{% querystring %}`.
 
 ## References
 

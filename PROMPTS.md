@@ -28,6 +28,19 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Added the HTMX list pattern to CLAUDE.md after Phase 3
+
+### Prompts
+1. Add any relevant rules or architecture that we added during phase 2 or phase 3 to CLAUDE.md. Remember to keep this very concise, to the point, and straighforward. We only want to add information that is absolutely vital to the codebase, and we do not want to make the file verbose.
+2. Add it to PROMPTS.md first, then commit and push
+
+### Summary
+- **Outcome:** Added one bullet to "Architecture decisions" in `CLAUDE.md`, the HTMX list pattern: one results partial for full and HTMX responses, full page for history-restore requests (HTMX history cache off in `base.html`), and page links using `{% querystring %}`. The Phase 5 job list must follow the same rules. Committed and pushed with this entry.
+- **Deviations:** None. The agent asked before committing, and the user asked for this log entry first.
+- **Sideways:**
+  - Phase 2's email lowercasing in `Candidate.clean()` and `save()` was left out on purpose. It belongs to one model and is already explained in comments in the code.
+  - This session continued from the Phase 3 session below. It got its own entry so the earlier entry stays unchanged.
+
 ## 2026-11-01 — Implemented Phase 3: candidate list with live search
 
 ### Prompts
