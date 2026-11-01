@@ -28,6 +28,35 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Created the initial CLAUDE.md from the PRD
+
+### Prompts
+1. Create the initial CLAUDE.md file for this project. It should be concise and only about 20-30 lines. Include only the following: (1) a one-line project description, (2) the approved technology stack and package manager, (3) durable, project-wide architecture decisions already established in the PRD, (4) short pointers to the PRD, plan, and prototypes instead of repeating their details. Do not add commands yet because the project tooling has not been installed or verified. Do not predict project structure, paths, template conventions, URL conventions, or testing commands that do not exist yet. Do not copy business requirements, user stories, implementation phases, rejected alternatives, or detailed feature rules into CLAUDE.md. Do not invent new architectural conventions.
+2. Add this session to PROMPTS.md
+
+### Summary
+- **Outcome:** The agent read the PRD and the start of the plan, then wrote a 26-line `CLAUDE.md` at the repo root. It has a one-line description, the tech stack with uv as package manager, seven architecture decisions taken from the PRD (three apps, one-way imports, thin views with a service layer, stage rules defined once, one transactional move service, default auth with login required everywhere, code-defined choices), and pointers to `prd/`, `plans/`, and `prototypes/` (marked throwaway). Nothing was committed.
+- **Deviations:** None. No follow-up questions were asked.
+- **Sideways:**
+  - The `/clear` before the session meant the agent had to find and read the PRD and plan itself.
+  - The agent deliberately left out the plan's URL list and the HTMX lazy-load pattern for "Add application", because those are plan-level details and URL conventions were excluded by the prompt.
+
+## 2026-11-01 — Broke the ATS PRD into a 13-phase tracer-bullet implementation plan
+
+### Prompts
+1. `/prd-to-plan`
+2. I'd like fewer phases. Can we make the merges tou mentioned?
+3. Add this session to PROMPTS.md
+
+### Summary
+- **Outcome:** The agent read `prd/applicant-tracking-system.md` and found the repo has no Django code yet. It proposed 16 vertical-slice phases. The plan header records the durable decisions: three apps with one-way imports, namespaced URL patterns using integer pks, the five models and how they relate, a single stage-rules table, and login required everywhere. After the requested merges, it wrote 13 phases to `plans/applicant-tracking-system.md`. Each phase lists its user stories, what to build, and acceptance criteria. No Django code was written and nothing was committed.
+- **Deviations:**
+  - Asked for fewer phases. The agent's merge suggestions were accepted as offered: password change/reset folded into the project skeleton (old 2 → 1), close/reopen folded into job openings (old 8 → 6), and Mark Hired folded into Reject/Withdraw/Reopen (old 12 → 11).
+  - The agent added a decision the PRD doesn't spell out: the candidate page lazy-loads the "Add application" form from the applications app via HTMX. This keeps the one-way import rule. It also chose the specific URL paths. Both were presented with the first breakdown and not objected to.
+- **Sideways:**
+  - The `/clear` before the skill meant the PRD wasn't in context, so the agent found and read it from `prd/` without asking.
+  - The agent caught a confusingly worded acceptance criterion in Phase 12 (about the archive rule and imports) and rewrote it right after writing the file.
+
 ## 2026-11-01 — Grilled the ATS project idea into 18 design decisions, prototyped 4 of them, and wrote the PRD
 
 ### Prompts
