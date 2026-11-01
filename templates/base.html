@@ -1,0 +1,38 @@
+{% load static tailwind_cli %}<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Applicant Tracking System{% endblock %}</title>
+  {% tailwind_css %}
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+</head>
+<body class="min-h-screen bg-base-200" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% if user.is_authenticated %}
+  <div class="navbar bg-base-100 shadow-sm">
+    <div class="flex-1">
+      <a href="{% url 'applications:dashboard' %}" class="btn btn-ghost text-xl">ATS</a>
+    </div>
+    <div class="flex-none">
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost">{{ user.get_full_name|default:user.get_username }}</div>
+        <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-box z-10 mt-2 w-52 p-2 shadow">
+          <li><a href="{% url 'password_change' %}">Change password</a></li>
+          {% if user.is_staff %}<li><a href="{% url 'admin:index' %}">Admin site</a></li>{% endif %}
+          <li>
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left">Log out</button>
+            </form>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <main class="container mx-auto p-6">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

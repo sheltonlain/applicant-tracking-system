@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% comment %}Shared centered card layout for the login, password change, and password reset pages.{% endcomment %}
+
+{% block content %}
+<div class="flex justify-center">
+  <div class="card bg-base-100 w-full max-w-md shadow">
+    <div class="card-body">
+      <h1 class="card-title text-2xl mb-2">{% block card_title %}{% endblock %}</h1>
+      {% block card_body %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -28,6 +28,31 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 1: project skeleton and accounts
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md implement Phase 1`
+2. Yes, go ahead with those two
+3. Yes, make it pass
+4. Switch to the middleware, then move on to behavior 2
+5. Yes, keep the test and finish Phase 1 normally. Is there another TDD test we can run for this phase instead?
+6. The forgot password link is invalid
+7. The dev server is not showing a reset link at all now
+8. *(Interrupted a tool call)* I think it is indeed because of the inactive status. Let me try again before we proceed.
+9. Everything in Phase 1 works. Update PROMPTS.md, commit with a detailed message, and push.
+
+### Summary
+- **Outcome:** Built Phase 1 of the plan. The project is managed with uv on Django 6.1 and uses a `config/` project package. It has the three apps (`candidates`, `jobs`, `applications`), django-htmx, and Tailwind + DaisyUI through django-tailwind-cli. HTMX is saved in `assets/js/` instead of loaded from a CDN. A shared `templates/base.html` has a navbar that shows the user's full name, or the username if no full name is set, with Change password, Admin site (admins only), and Log out. There are DaisyUI-styled templates for login, password change, and the full password-reset flow, plus a login-required placeholder dashboard at `/`. pytest, pytest-django, factory_boy, and Ruff are configured in `pyproject.toml`. The root `conftest.py` has a `UserFactory` and the `staff_user`, `logged_in_client`, and `staff_password` fixtures. The README lists the setup, run, and check commands. 17 tests pass, and Ruff and `manage.py check` are clean. The user manually verified every Phase 1 acceptance criterion.
+- **Deviations:**
+  - The agent picked two TDD behaviors, both approved: home requires login and shows the username, and the password-reset flow works end to end.
+  - After behavior 1 went green with `@login_required`, the agent recommended Django's `LoginRequiredMiddleware`, so every future view requires login by default (user story 2). The user accepted, and the decorator was removed.
+  - Follow-up question: asked whether another TDD candidate existed for this phase. The agent said no: the remaining criteria (logout, password change, inactive users, admin) are all built-in Django behavior, so a new test would pass right away.
+- **Sideways:**
+  - The behavior 2 (password reset) test passed on its first run with no RED. Django's built-in views and the admin app's fallback templates already handled the flow. The agent reported this instead of faking a failure, and the test was kept as a regression check.
+  - During manual testing, the reset link in the terminal was "invalid". Django's console email backend printed the email in quoted-printable encoding, which split the long link across two lines with a trailing `=`, so the copied token was broken. The agent reproduced it and wrote a regression test. The test first failed on the real split-link output, after an earlier stub run that only raised an error and didn't count as a RED. The agent then added `config/email.py` (`ReadableConsoleEmailBackend`), which prints the decoded body.
+  - Next, no reset email appeared at all. The agent checked the database and found the test `staff` account was inactive (deactivated in manual step 8). Django correctly sends no reset email to inactive users. The user stopped the agent's planned live-server check and confirmed this themselves.
+  - A PowerShell-to-Python shell command failed because PowerShell 5.1 strips double quotes from native-command arguments. It was re-run through Bash.
+
 ## 2026-11-01 — Created the initial CLAUDE.md from the PRD
 
 ### Prompts

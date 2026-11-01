@@ -1,0 +1,18 @@
+{% if form.non_field_errors %}
+<div role="alert" class="alert alert-error mb-4">
+  {% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}
+</div>
+{% endif %}
+{% for field in form %}
+<fieldset class="fieldset">
+  <legend class="fieldset-legend">{{ field.label }}</legend>
+  <input type="{{ field.field.widget.input_type }}" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+         class="input w-full{% if field.errors %} input-error{% endif %}"
+         {% if field.value and field.field.widget.input_type != "password" %}value="{{ field.value }}"{% endif %}
+         {% if field.field.required %}required{% endif %}
+         {% if field.field.widget.attrs.autocomplete %}autocomplete="{{ field.field.widget.attrs.autocomplete }}"{% endif %}
+         {% if field.field.widget.attrs.autofocus %}autofocus{% endif %}>
+  {% for error in field.errors %}<p class="label text-error">{{ error }}</p>{% endfor %}
+  {% if field.help_text %}<div class="label whitespace-normal text-xs">{{ field.help_text|safe }}</div>{% endif %}
+</fieldset>
+{% endfor %}
