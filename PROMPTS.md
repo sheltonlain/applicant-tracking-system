@@ -28,6 +28,50 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 6: skills on job openings
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 6`
+2. *(Rejected a multiple-choice question about how to add a new skill, to clarify)*
+3. `/prototype can you prototype the UI for each option so I can compare?`
+4. Option B
+5. yes, go ahead with those three
+6. yes, make it pass
+7. yes, move on to behavior 2
+8. yes, make it pass
+9. yes, move on to behavior 3
+10. yes, make it pass
+11. Yes
+12. When you try to delete a skill, and you get the warning that "x job uses this skill" is there a way for us to show a list of jobs where that skill is in use so it's easier to find?
+13. `/prototype can you prototype the UI for these?`
+14. B
+15. yes, make it pass
+16. Everything passes
+17. Add that line, then update PROMPTS.md, commit, and push
+
+### Summary
+- **Outcome:**
+  - Added the `Skill` model, linked to jobs through a custom `JobSkill` table that protects skills (`on_delete=PROTECT`), so a skill a job uses can't be deleted anywhere, including the admin. Migration `jobs/migrations/0002_skills.py` and `SkillFactory` were added.
+  - `Skill.clean()` refuses a name that differs only in capitalization, with an error on the name field that names the match ("A skill named "Python" already exists."). A database rule on the lowercase name is the backstop.
+  - The job form has skill checkboxes and a "+ Add" box (HTMX, `/jobs/skills/add/`). It creates the skill right away and re-renders the skills area with the new skill ticked, keeping earlier ticks. Enter in the box adds the skill instead of submitting the job form.
+  - Added a Skills page at `/jobs/skills/`, linked from the job list. It lists skills A to Z, and each "Used by" count opens a list of the jobs, each linking to that job's edit page. It also has Add, Rename, and Delete. `delete_skill()` in `jobs/services.py` refuses to delete a skill in use with a friendly `messages.info` note. A repeated delete also gets a friendly note.
+  - The job detail page shows skill badges. The admin registers `Skill` and shows each job's skills as an inline.
+  - The shared form partial gained a `skip=` option so a page can draw one field itself.
+  - TDD covered three behaviors: refusing a name that differs only in capitalization, blocking the delete of a skill in use, and the "+ Add" button. The "Used by" list got its own RED/GREEN test.
+  - 115 tests pass and Ruff is clean. The user confirmed all 13 manual steps. All six acceptance criteria are ticked. One line was added to `CLAUDE.md` (the `JobSkill` link table and the admin inline).
+- **Deviations:**
+  - The user rejected the agent's first multiple-choice question about adding a new skill, to clarify, and then asked for a UI prototype. Built `prototypes/add-skill-ui.html` with three variants: a text box saved with the job, an HTMX "Add" button, and a separate Skills page only. The agent recommended A; the user chose **B**, the HTMX "Add" button, accepting that a skill added and then cancelled still exists.
+  - After the build, the user asked to see which jobs use a skill when a delete is blocked. The agent offered A (list the jobs in the blocked-delete note), B (the "Used by" count opens a list), or C (both), and recommended A. The user asked for a prototype (`prototypes/skill-in-use-ui.html`) and chose **B**, so the delete note stays plain text.
+- **Sideways:**
+  - Behavior 1's and behavior 3's first runs failed with exceptions (`KeyError`, `DoesNotExist`), not on assertions. Each test got a mechanical fix so it failed on an assertion before any code was written.
+  - The first regular-test run found a real bug: the Skills page wasn't sorted A to Z, because Django ignores `Meta.ordering` on queries that count related rows. Fixed with an explicit `order_by`.
+  - The login-required test first sent form data on GET requests, which put it in the redirect URL. Fixed so data is sent only with POST.
+  - Ruff flagged the new `JobSkill` model for having no `__str__` (DJ008); one was added.
+  - Two older text checks on the Skills page ("1 job<", "0 jobs<") broke when the count became a dropdown. Both were updated as mechanical fixes.
+  - Typing a skill name and clicking Save without clicking "+ Add" drops the name. The agent pointed this out and the user didn't ask for a change.
+  - Neither prototype was opened by the agent in a browser; the user used both.
+  - The agent ran the PROMPTS.md edit and the commit/push in parallel. The edit failed (wrong indentation in the text it was matching), so the Phase 6 commit `dd29282` was pushed without this entry. This entry was then added in a follow-up commit instead of rewriting the pushed commit.
+
 ## 2026-11-01 — Implemented Phase 5: job openings with close and reopen
 
 ### Prompts
