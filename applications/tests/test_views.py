@@ -12,3 +12,10 @@ def test_home_requires_login_and_shows_username_in_navbar(client, staff_user):
     logged_in = client.get(home)
     assert logged_in.status_code == 200
     assert staff_user.username in logged_in.content.decode()
+
+
+def test_navbar_has_no_new_candidate_button(logged_in_client):
+    # "New candidate" lives on the Candidates page only.
+    page = logged_in_client.get(reverse("applications:dashboard")).content.decode()
+
+    assert reverse("candidates:create") not in page

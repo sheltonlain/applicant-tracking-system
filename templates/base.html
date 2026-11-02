@@ -20,7 +20,6 @@
       <a href="{% url 'jobs:list' %}" class="btn btn-ghost">Jobs</a>
     </div>
     <div class="flex-none flex items-center gap-2">
-      <a href="{% url 'candidates:create' %}" class="btn btn-sm btn-primary">New candidate</a>
       <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-ghost">{{ user.get_full_name|default:user.get_username }}</div>
         <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-box z-10 mt-2 w-52 p-2 shadow">

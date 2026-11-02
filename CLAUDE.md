@@ -36,6 +36,9 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - `base.html` displays Django messages, so views confirm actions with `messages.success(...)`.
 - Job skills use a custom `JobSkill` link table (PROTECT on skill), so the admin edits them through an inline, not a plain field.
 - Status changes (job close/reopen, later stage moves) only go through services, never through forms or the admin; a stale or repeated action shows a friendly `messages.info(...)`, not an error page.
+- Cross-app UI is lazy-loaded, not imported: the candidate page loads its Applications panel from the `applications` app via HTMX (`hx-trigger="load"`).
+- Status-changing actions open a DaisyUI confirmation dialog first; job close/reopen uses the shared `jobs/partials/status_dialog.html` on both the list and detail pages.
+- Actions started from a list post a `next` URL to return to it; views follow `next` only if `url_has_allowed_host_and_scheme` accepts it.
 
 ## References
 

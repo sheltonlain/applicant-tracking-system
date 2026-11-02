@@ -28,6 +28,33 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 7: add an application from the candidate page
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 7`
+2. Yes
+3. yes, make it pass
+4. yes, move on to behavior 2
+5. yes, make it pass
+6. yes, move on to behavior 3
+7. yes, make it pass
+8. yes, continue with the rest of the phase
+9. Manual verification passed. I do have some UI changes I want to make before we move on to acceptance criteria. 1. There should be no "new candidate" button on the landing page since this button already lives in candidates. 2. When you select a candidate from the candidates tab and land on their page, there should be a back to all candidates button similarly to what we did with the jobs page. 3. In the jobs page, I would like to be able to mark jobs as opened or closed from the table. A warning box should pop up advising you of the change and confirming your action.
+10. Yes, I want the same confirmation box
+11. That looks right, move on to the acceptance criteria
+12. Add all three to CLAUDE.md
+
+### Summary
+- **Outcome:** Added the `Application` and `StageChange` models (migration `0001_initial`, factories). Application has a unique (candidate, job) constraint and PROTECT on candidate, job, and history user. `applications/services.py` gained `eligible_jobs()` and `create_application()`, which saves the application in Applied plus its first history row in one transaction and refuses closed jobs and duplicates with `ApplicationError`. The candidate page lazy-loads an Applications panel (list plus "Add application" form) from `/applications/new/<candidate_pk>/` via HTMX. Form errors show in the panel; success reloads the page with a `messages.success`. In the admin, applications are view-only apart from the source fields, and history is a read-only inline. TDD covered three behaviors: initial Applied plus history row, dropdown filtering, and refusing closed/duplicate jobs. UI changes after manual verification: removed the navbar "New candidate" button, added "← All candidates" on the candidate page, and added Close/Reopen to each jobs-table row behind a DaisyUI confirmation dialog that returns to the same filtered list via a safe `next` URL. The same dialog (shared `jobs/partials/status_dialog.html`) now guards the job detail page's buttons too. Close/reopen success messages now name the job. All 8 acceptance criteria are ticked, with 140 tests passing. Three conventions were added to CLAUDE.md (lazy-loaded cross-app UI, confirmation dialogs for status changes, safe `next` redirects).
+- **Deviations:**
+  - The agent chose without asking: PROTECT on `Application.job` (the plan only named candidate), an HX-Redirect full reload after a successful add (so `base.html` shows the message), and redirecting a non-HTMX visit to the panel URL back to the candidate page. All were presented in the plan summary before TDD started and not objected to.
+  - The UI changes (prompts 9–10) went beyond the Phase 7 plan, at my request. After building the table dialog, the agent offered to use it on the job detail page too, and I accepted.
+- **Sideways:**
+  - Behavior 1's first run failed with `DoesNotExist` instead of an assertion, because the stub didn't save anything. The agent treated this as missing scaffolding, not a RED, made the stub save the application, and got a real RED (`assert 0 == 1` history rows).
+  - Two tests written after the code failed at first because of test bugs, not app bugs. The panel test looked for another candidate's job anywhere in the panel, but that open job correctly appeared in the dropdown. The admin POST test left out the read-only inline's management form. Both tests were fixed.
+  - The `IntegrityError` fallback for two simultaneous submits in `create_application` is untested, because a single-threaded test can't reach it. The agent flagged this and kept the code.
+  - A shell command meant to replace the table's dialog with the shared include hung, probably on a bare `python` alias. The agent stopped it, confirmed the file was unchanged, and made the edit with the Edit tool.
+
 ## 2026-11-01 — Implemented Phase 6: skills on job openings
 
 ### Prompts

@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import JobOpeningForm, SkillForm
@@ -31,6 +32,9 @@ def job_list(request):
         "query": query,
         "status": status,
         "status_filters": STATUS_FILTERS,
+        # Where the table's Close / Reopen buttons return to. HTMX searches request this same
+        # URL (the one pushed to the address bar), so it is right for both kinds of response.
+        "list_url": request.get_full_path(),
     }
     # Same pattern as the candidate list: HTMX swaps only the results; Back gets the full page.
     if request.htmx and not request.htmx.history_restore_request:
@@ -143,5 +147,11 @@ def _change_status(request, pk, service, success_message):
         # Only happens from a stale page (e.g. a second tab): a friendly note, not an error page.
         messages.info(request, str(error))
     else:
-        messages.success(request, success_message)
+        messages.success(request, f"{job.title}: {success_message}")
+    # The job list sends "next" so staff stay on the list; only same-site URLs are followed.
+    next_url = request.POST.get("next", "")
+    if url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(next_url)
     return redirect(job)

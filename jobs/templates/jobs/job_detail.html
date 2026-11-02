@@ -16,17 +16,7 @@
       <div class="flex gap-2">
         <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-sm">Edit</a>
         {# One toggle button: an open job can only be closed, a closed job can only be reopened. #}
-        {% if job.is_open %}
-        <form method="post" action="{% url 'jobs:close' job.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-warning">Close job</button>
-        </form>
-        {% else %}
-        <form method="post" action="{% url 'jobs:reopen' job.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-success">Reopen job</button>
-        </form>
-        {% endif %}
+        {% include "jobs/partials/status_dialog.html" %}
       </div>
     </div>
 

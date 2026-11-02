@@ -107,3 +107,12 @@ def test_candidate_views_require_login(client, db, name):
 
     assert response.status_code == 302
     assert response.url == f"{reverse('login')}?next={url}"
+
+
+def test_detail_page_links_back_to_all_candidates(logged_in_client):
+    candidate = CandidateFactory()
+
+    page = logged_in_client.get(reverse("candidates:detail", args=[candidate.pk])).content.decode()
+
+    assert f'href="{reverse("candidates:list")}"' in page
+    assert "All candidates" in page

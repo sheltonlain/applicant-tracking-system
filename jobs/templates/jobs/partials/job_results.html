@@ -1,7 +1,7 @@
 <div id="job-results">
   <table class="table">
     <thead>
-      <tr><th>Title</th><th>Department</th><th>Location</th><th>Type</th><th>Status</th></tr>
+      <tr><th>Title</th><th>Department</th><th>Location</th><th>Type</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
     </thead>
     <tbody>
       {% for job in page_obj %}
@@ -14,9 +14,13 @@
           {% if job.is_open %}<span class="badge badge-success">Open</span>
           {% else %}<span class="badge badge-neutral">Closed</span>{% endif %}
         </td>
+        <td class="text-right">
+          {# Returns to this same list (search, filter, and page kept) after the change. #}
+          {% include "jobs/partials/status_dialog.html" with next=list_url size="btn-xs" close_label="Close" reopen_label="Reopen" %}
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="5">No job openings found.</td></tr>
+      <tr><td colspan="6">No job openings found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

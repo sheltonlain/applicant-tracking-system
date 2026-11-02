@@ -1,0 +1,30 @@
+{# Close / Reopen button for one job, plus the confirmation box it opens. Used by the job list  #}
+{# and the job detail page. Pass next="<url>" to return there afterwards (default: job detail). #}
+{# The button only opens the box; the change happens when it is confirmed.                      #}
+<button type="button" class="btn {{ size|default:'btn-sm' }} {% if job.is_open %}btn-warning{% else %}btn-success{% endif %}"
+        onclick="document.getElementById('status-dialog-{{ job.pk }}').showModal()">
+  {% if job.is_open %}{{ close_label|default:"Close job" }}{% else %}{{ reopen_label|default:"Reopen job" }}{% endif %}
+</button>
+<dialog id="status-dialog-{{ job.pk }}" class="modal text-left">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">{% if job.is_open %}Close this job?{% else %}Reopen this job?{% endif %}</h3>
+    <p class="mt-2 font-semibold">{{ job.title }} <span class="font-normal opacity-70">— {{ job.department }} · {{ job.location }}</span></p>
+    <div role="alert" class="alert {% if job.is_open %}alert-warning{% else %}alert-info{% endif %} mt-4">
+      <span>
+        {% if job.is_open %}No new applications can be added while the job is closed. Existing applications are not changed and can keep moving through their stages.
+        {% else %}New applications can be added again. Existing applications are not changed.{% endif %}
+      </span>
+    </div>
+    <div class="modal-action">
+      <form method="dialog"><button class="btn btn-sm">Cancel</button></form>
+      <form method="post" action="{% if job.is_open %}{% url 'jobs:close' job.pk %}{% else %}{% url 'jobs:reopen' job.pk %}{% endif %}">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <button type="submit" class="btn btn-sm {% if job.is_open %}btn-warning{% else %}btn-success{% endif %}">
+          {% if job.is_open %}Close job{% else %}Reopen job{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cancel</button></form>
+</dialog>

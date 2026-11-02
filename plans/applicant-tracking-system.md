@@ -155,14 +155,14 @@ On the candidate detail page, an "Add application" form (lazy-loaded from the ap
 
 ### Acceptance criteria
 
-- [ ] `Application` and `StageChange` models and migrations exist, with factories
-- [ ] Database constraint prevents two applications for the same candidate and job
-- [ ] Job dropdown excludes closed jobs and jobs already applied to
-- [ ] New application is in Applied and has one history row with blank from-stage, to-stage Applied, the current user, and a timestamp
-- [ ] Each application stores its own source and source note
-- [ ] Candidate page lists applications with job (title, department, location) and stage
-- [ ] Deleting a candidate with applications is blocked by PROTECT (model test)
-- [ ] The candidates app does not import from the applications app
+- [x] `Application` and `StageChange` models and migrations exist, with factories
+- [x] Database constraint prevents two applications for the same candidate and job
+- [x] Job dropdown excludes closed jobs and jobs already applied to
+- [x] New application is in Applied and has one history row with blank from-stage, to-stage Applied, the current user, and a timestamp
+- [x] Each application stores its own source and source note
+- [x] Candidate page lists applications with job (title, department, location) and stage
+- [x] Deleting a candidate with applications is blocked by PROTECT (model test)
+- [x] The candidates app does not import from the applications app
 
 ---
 

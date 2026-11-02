@@ -173,3 +173,14 @@ def test_new_job_page_links_back_to_the_job_list(logged_in_client):
     response = logged_in_client.post(reverse("jobs:create"), VALID_JOB, follow=True)
 
     assert f'href="{reverse("jobs:list")}"' in response.content.decode().split("<main", 1)[1]
+
+
+def test_detail_page_close_button_opens_a_confirmation_dialog(logged_in_client):
+    job = JobOpeningFactory(status=JobOpening.Status.OPEN)
+
+    page = logged_in_client.get(job.get_absolute_url()).content.decode()
+
+    assert f"document.getElementById('status-dialog-{job.pk}').showModal()" in page
+    assert f'<dialog id="status-dialog-{job.pk}"' in page
+    assert "Close this job?" in page
+    assert 'name="next"' not in page  # confirming returns to this detail page

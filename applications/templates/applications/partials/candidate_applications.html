@@ -1,0 +1,42 @@
+{# Lazy-loaded into the candidate page. Re-rendered in place when the add form has errors. #}
+<section id="candidate-applications">
+  <h2 class="font-semibold mt-6">Applications</h2>
+  {% if applications %}
+  <div class="overflow-x-auto mt-2">
+    <table class="table table-sm">
+      <thead>
+        <tr><th>Job</th><th>Stage</th><th>Source</th><th>Applied</th></tr>
+      </thead>
+      <tbody>
+        {% for application in applications %}
+        <tr>
+          <td>
+            <a class="link" href="{{ application.job.get_absolute_url }}">{{ application.job.title }}</a>
+            <div class="text-xs opacity-70">{{ application.job.department }} · {{ application.job.location }}</div>
+          </td>
+          <td><span class="badge badge-outline">{{ application.get_stage_display }}</span></td>
+          <td>
+            {{ application.get_source_display }}
+            {% if application.source_note %}<div class="text-xs opacity-70">{{ application.source_note }}</div>{% endif %}
+          </td>
+          <td>{{ application.created_at|date:"M j, Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="opacity-70">No applications yet.</p>
+  {% endif %}
+
+  <h3 class="font-semibold mt-6">Add application</h3>
+  {% if form.fields.job.queryset.exists %}
+  <form hx-post="{% url 'applications:candidate_applications' candidate.pk %}"
+        hx-target="#candidate-applications" hx-swap="outerHTML" novalidate>
+    {% include "partials/form_fields.html" %}
+    <button type="submit" class="btn btn-primary btn-sm mt-4">Add application</button>
+  </form>
+  {% else %}
+  <p class="opacity-70">There are no open jobs this candidate hasn't already applied to.</p>
+  {% endif %}
+</section>

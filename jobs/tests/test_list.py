@@ -128,3 +128,49 @@ def test_search_with_no_matches_shows_a_message(logged_in_client):
     response = logged_in_client.get(reverse("jobs:list"), {"q": "nobody"})
 
     assert "No job openings found." in response.content.decode()
+
+
+def test_each_row_offers_close_or_reopen_behind_a_confirmation_dialog(logged_in_client):
+    open_job = JobOpeningFactory(title="Open Role")
+    closed_job = JobOpeningFactory(
+        title="Closed Role", status=JobOpening.Status.CLOSED, closed_at=timezone.now()
+    )
+
+    page = logged_in_client.get(reverse("jobs:list"), {"status": "all"}).content.decode()
+
+    # The row button only opens a dialog; the form that changes the status is inside it.
+    assert f"document.getElementById('status-dialog-{open_job.pk}').showModal()" in page
+    assert f'<dialog id="status-dialog-{open_job.pk}"' in page
+    assert "Close this job?" in page
+    assert f'action="{reverse("jobs:close", args=[open_job.pk])}"' in page
+    assert "Reopen this job?" in page
+    assert f'action="{reverse("jobs:reopen", args=[closed_job.pk])}"' in page
+    assert reverse("jobs:reopen", args=[open_job.pk]) not in page
+    assert reverse("jobs:close", args=[closed_job.pk]) not in page
+
+
+def test_closing_from_the_list_returns_to_the_same_filtered_list(logged_in_client):
+    job = JobOpeningFactory(title="Data Analyst")
+    list_url = reverse("jobs:list") + "?q=data&status=all"
+
+    page = logged_in_client.get(list_url).content.decode()
+    assert f'name="next" value="{html.escape(list_url)}"' in page
+
+    response = logged_in_client.post(reverse("jobs:close", args=[job.pk]), {"next": list_url})
+
+    assert response.status_code == 302
+    assert response.url == list_url
+    job.refresh_from_db()
+    assert job.status == JobOpening.Status.CLOSED
+    follow = logged_in_client.get(list_url).content.decode()
+    assert "Data Analyst: Job closed." in follow
+
+
+def test_close_ignores_a_next_url_on_another_site(logged_in_client):
+    job = JobOpeningFactory()
+
+    response = logged_in_client.post(
+        reverse("jobs:close", args=[job.pk]), {"next": "https://evil.example.com/"}
+    )
+
+    assert response.url == job.get_absolute_url()
