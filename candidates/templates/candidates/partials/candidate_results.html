@@ -6,7 +6,10 @@
     <tbody>
       {% for candidate in page_obj %}
       <tr>
-        <td><a class="link" href="{{ candidate.get_absolute_url }}">{{ candidate.full_name }}</a></td>
+        <td>
+          <a class="link" href="{{ candidate.get_absolute_url }}">{{ candidate.full_name }}</a>
+          {% if candidate.archived %}<span class="badge badge-neutral badge-sm ml-1">Archived</span>{% endif %}
+        </td>
         <td>{{ candidate.email }}</td>
         <td>{{ candidate.phone|default:"—" }}</td>
       </tr>

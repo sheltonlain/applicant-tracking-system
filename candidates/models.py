@@ -13,6 +13,12 @@ def resume_upload_to(candidate, filename):
     return f"resumes/{uuid.uuid4().hex}{Path(filename).suffix.lower()}"
 
 
+class CandidateQuerySet(models.QuerySet):
+    def not_archived(self):
+        """Candidates shown in default listings: everyone who isn't archived."""
+        return self.filter(archived=False)
+
+
 class Candidate(models.Model):
     """A person who has applied, or may apply, to job openings."""
 
@@ -24,8 +30,13 @@ class Candidate(models.Model):
     url = models.URLField("LinkedIn / portfolio URL", blank=True)
     notes = models.TextField(blank=True)
     resume = models.FileField("Résumé", upload_to=resume_upload_to, blank=True)
+    # Changed only through the archive / unarchive services, never through a form or the admin.
+    archived = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # `objects` still returns everyone, so an archived candidate's page and history still load.
+    objects = CandidateQuerySet.as_manager()
 
     class Meta:
         ordering = ["last_name", "first_name"]

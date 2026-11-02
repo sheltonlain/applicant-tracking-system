@@ -1,0 +1,29 @@
+{# Archive / Unarchive button for a candidate, plus the confirmation box it opens.              #}
+{# The button only opens the box; the change happens when it is confirmed. Archiving posts to    #}
+{# the applications app (by URL name only), which refuses while an application is still active. #}
+<button type="button" class="btn btn-sm {% if candidate.archived %}btn-success{% else %}btn-warning{% endif %}"
+        onclick="document.getElementById('archive-dialog').showModal()">
+  {% if candidate.archived %}Unarchive{% else %}Archive{% endif %}
+</button>
+<dialog id="archive-dialog" class="modal text-left">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">{% if candidate.archived %}Unarchive this candidate?{% else %}Archive this candidate?{% endif %}</h3>
+    <p class="mt-2 font-semibold">{{ candidate.full_name }} <span class="font-normal opacity-70">— {{ candidate.email }}</span></p>
+    <div role="alert" class="alert {% if candidate.archived %}alert-info{% else %}alert-warning{% endif %} mt-4">
+      <span>
+        {% if candidate.archived %}They will show in the candidate list again, and new applications can be added.
+        {% else %}They will be hidden from the candidate list (choose Status “Archived” or “All” to find them) and can't get new applications. Their applications and history are kept. Archiving is refused while any application is still active.{% endif %}
+      </span>
+    </div>
+    <div class="modal-action">
+      <form method="dialog"><button class="btn btn-sm">Cancel</button></form>
+      <form method="post" action="{% if candidate.archived %}{% url 'candidates:unarchive' candidate.pk %}{% else %}{% url 'applications:archive_candidate' candidate.pk %}{% endif %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm {% if candidate.archived %}btn-success{% else %}btn-warning{% endif %}">
+          {% if candidate.archived %}Unarchive{% else %}Archive{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cancel</button></form>
+</dialog>

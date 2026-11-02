@@ -9,6 +9,8 @@ urlpatterns = [
     path("new/", views.candidate_create, name="create"),
     path("<int:pk>/", views.candidate_detail, name="detail"),
     path("<int:pk>/edit/", views.candidate_edit, name="edit"),
+    # /candidates/<pk>/archive/ is routed by the applications app (see applications/urls.py).
+    path("<int:pk>/unarchive/", views.candidate_unarchive, name="unarchive"),
     path("<int:pk>/resume/", views.resume_download, name="resume"),
     path("<int:pk>/resume/upload/", views.resume_upload, name="resume_upload"),
 ]

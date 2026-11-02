@@ -28,6 +28,36 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-02 — Implemented Phase 12: archive and unarchive candidates
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md phase 12`
+2. I approve
+3. I approve
+4. I approve
+5. I approve. Can we make the toggle show archived candidates later if I want?
+6. I approve
+7. I approve
+8. I approve
+9. The candidates tab is broken. When I click on it, I ge an operational error saying that there is no such column. The terminal also advised that I needed to run python manage.py migrate, but when I tried, it also gave an error
+10. The Django admin does allow you to delete candidates.
+11. keep the prd behavior
+12. Can we make it so that we can filter to just archived as well as displaying archived candidates in our table with a filter?
+13. Manual verification passed, everything works
+14. add them as written
+
+### Summary
+- **Outcome:** Added `Candidate.archived` (migration `0003_candidate_archived`) and `Candidate.objects.not_archived()`. `archive_candidate()` in `applications/services.py` locks and re-reads the candidate, then refuses with `ArchiveError` if they are already archived or have any application in `ACTIVE_STAGES`. The blocked message says how many applications are active. Its view (`applications:archive_candidate`) is served at the plan's URL `/candidates/<pk>/archive/` from the applications URLconf, so `candidates` still imports nothing from `applications`. `unarchive_candidate()` and its view stay in `candidates` at `/candidates/<pk>/unarchive/`. Repeated or stale actions get `messages.info`. The candidate page has an Archive/Unarchive button behind a DaisyUI confirmation dialog, plus an "Archived" badge and alert. For archived candidates, the Applications panel still lists their applications, but shows a note instead of the Add application form, and `create_application()` refuses them. The candidate list got a Status dropdown (Active / Archived / All, `?status=`) using the job list's `STATUS_FILTERS` pattern; it works with search and pagination, and archived rows get a badge. In the admin, `archived` is read-only and filterable. TDD covered three behaviors: archive blocked by any active application and allowed once all are final, the list filter, and the add-application endpoint refusing archived candidates. Two new test files cover the rest. All 7 acceptance criteria are ticked, with 300 tests passing. Three lines were added to CLAUDE.md.
+- **Deviations:**
+  - The agent chose without asking, and stated the choice before TDD (not objected to): split archive (in `applications`, because of the stage rule) from unarchive (in `candidates`), and serve the archive view at `/candidates/<pk>/archive/` from the applications app.
+  - At behavior 2's RED, the user asked whether the toggle could later show only archived candidates. The agent said it was a one-line change in `search_candidates()`. After manual testing, the user asked for that: the "Show archived" checkbox (`?archived=1`) became an Active / Archived / All dropdown (`?status=`). The approved behavior 2 test was rewritten to assert the new filter, and the agent showed the new version.
+  - The user pointed out that the admin can delete candidates. The agent explained that the PRD only bans deletion in the app, and that `PROTECT` already blocks deleting a candidate with applications in the admin. It offered to block admin deletes entirely. The user chose to keep the PRD behavior.
+- **Sideways:**
+  - The agent created the migration but didn't apply it to the dev database or put `migrate` in the manual steps, so the Candidates tab crashed with "no such column". The tests didn't catch it because they build a fresh database. The user's own `migrate` probably failed because it ran without `uv run`; the agent didn't see that error. The agent applied the migration with `uv run python manage.py migrate`, and the user asked to add a "migrate after adding a migration" line to CLAUDE.md.
+  - The first "no delete URL" test only checked top-level URL names, so it could never fail for namespaced URLs. The agent replaced it before running it with a check of the `candidates` and `applications` namespaces.
+  - One later test expected an HTML-escaped apostrophe in static template text, which the page doesn't have; this was a mechanical fix to the test.
+  - The first PROMPTS.md edit failed because the text it matched had the wrong indentation; it was retried before committing.
+
 ## 2026-11-02 — Implemented Phase 11: home dashboard and closed-job reminders
 
 ### Prompts

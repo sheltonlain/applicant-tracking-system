@@ -8,18 +8,44 @@ from .models import Candidate
 logger = logging.getLogger(__name__)
 
 
-def search_candidates(query=""):
-    """Candidates matching every word of the query in their first name, last name, or email.
+# Choices for the candidate list's status filter, in the order they are shown.
+STATUS_FILTERS = {"active": "Active", "archived": "Archived", "all": "All"}
 
-    Word order and capitalization don't matter, so "doe jane" finds Jane Doe.
-    A blank query returns everyone.
+
+def search_candidates(query="", status="active"):
+    """Candidates with the given status ("active", "archived", or "all") matching the query.
+
+    Every word of the query must appear in the first name, last name, or email, in any order
+    and any capitalization, so "doe jane" finds Jane Doe. A blank query matches everyone.
     """
-    candidates = Candidate.objects.all()
+    if status == "all":
+        candidates = Candidate.objects.all()
+    elif status == "archived":
+        candidates = Candidate.objects.filter(archived=True)
+    else:
+        candidates = Candidate.objects.not_archived()
     for word in query.split():
         candidates = candidates.filter(
             Q(first_name__icontains=word) | Q(last_name__icontains=word) | Q(email__icontains=word)
         )
     return candidates
+
+
+class CandidateStatusError(Exception):
+    """The candidate is already in the requested state (e.g. unarchiving someone not archived)."""
+
+
+def unarchive_candidate(candidate):
+    """Show the candidate in the default candidate list again. Always allowed.
+
+    Raises CandidateStatusError if they aren't archived, which only happens from a stale page.
+    (Archiving lives in applications.services, because it depends on their applications.)
+    """
+    candidate.refresh_from_db(fields=["archived"])
+    if not candidate.archived:
+        raise CandidateStatusError(f"{candidate.full_name} is not archived.")
+    candidate.archived = False
+    candidate.save(update_fields=["archived", "updated_at"])
 
 
 class ResumeUploadError(Exception):

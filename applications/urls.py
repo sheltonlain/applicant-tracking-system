@@ -16,4 +16,11 @@ urlpatterns = [
         views.candidate_applications,
         name="candidate_applications",
     ),
+    # Under /candidates/ to match the candidate's other URLs, but served by this app, because
+    # the archive rule depends on the candidate's applications.
+    path(
+        "candidates/<int:candidate_pk>/archive/",
+        views.candidate_archive,
+        name="archive_candidate",
+    ),
 ]

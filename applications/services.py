@@ -1,6 +1,7 @@
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 
+from candidates.models import Candidate
 from jobs.models import JobOpening
 
 from .models import Application, StageChange
@@ -25,9 +26,16 @@ def create_application(*, candidate, job, source, source_note="", user):
     The application and its first history row (no from-stage, to Applied, by `user`) are saved
     together in one transaction, so the timeline always starts when the application was received.
 
-    Raises ApplicationError, and saves nothing, if the job is closed or the candidate has already
-    applied to it. The form's job choices prevent both; this guards stale pages and crafted posts.
+    Raises ApplicationError, and saves nothing, if the candidate is archived, the job is closed, or
+    the candidate has already applied to it. The candidate page hides the form for archived
+    candidates and its job choices rule out the rest; this guards stale pages and crafted posts.
     """
+    # Read from the database, so a candidate archived in another tab is still refused.
+    if Candidate.objects.filter(pk=candidate.pk, archived=True).exists():
+        raise ApplicationError(
+            f"{candidate.full_name} is archived, so new applications can't be added. "
+            "Unarchive them first."
+        )
     if not job.is_open:
         raise ApplicationError("This job is closed, so new applications can't be added.")
     if Application.objects.filter(candidate=candidate, job=job).exists():
@@ -167,6 +175,36 @@ def jobs_needing_attention():
 def active_application_count(job):
     """How many of the job's applications are still in an active stage."""
     return job.applications.filter(stage__in=ACTIVE_STAGES).count()
+
+
+class ArchiveError(Exception):
+    """The candidate can't be archived (an application is still active, or already archived)."""
+
+
+@transaction.atomic
+def archive_candidate(candidate):
+    """Hide the candidate from the default candidate list.
+
+    Raises ArchiveError, and changes nothing, while any of their applications is in an active
+    stage (so nobody disappears mid-process) or if they are already archived (a stale page).
+    Their applications and history are not touched.
+
+    Lives here, not in the candidates app, because only this app knows which stages are active.
+    """
+    # Re-read (and lock, on databases that support it) so the check uses the saved state.
+    candidate = Candidate.objects.select_for_update().get(pk=candidate.pk)
+    if candidate.archived:
+        raise ArchiveError(f"{candidate.full_name} is already archived.")
+    active = candidate.applications.filter(stage__in=ACTIVE_STAGES).count()
+    if active:
+        applications = "application is" if active == 1 else "applications are"
+        raise ArchiveError(
+            f"{candidate.full_name} can't be archived while {active} {applications} still "
+            "active. Move each one to Hired, Rejected, or Withdrawn first."
+        )
+    candidate.archived = True
+    candidate.save(update_fields=["archived", "updated_at"])
+    return candidate
 
 
 def _stage_label(stage):

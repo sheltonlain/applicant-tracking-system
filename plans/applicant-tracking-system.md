@@ -252,13 +252,13 @@ Staff can archive a candidate from their detail page, blocked with a clear messa
 
 ### Acceptance criteria
 
-- [ ] Archiving is blocked while the candidate has an active application; allowed once all are Hired/Rejected/Withdrawn
-- [ ] Unarchive always succeeds
-- [ ] Default candidate list hides archived; "Show archived" toggle shows them and persists in the URL alongside search
-- [ ] Archived candidate pages show no "Add application" form, and the endpoint refuses to create one
-- [ ] Archived candidates' applications and history are unchanged
-- [ ] The archive rule lives in the applications service layer (or uses a reverse relation); the candidates app still does not import from applications
-- [ ] No delete action for candidates exists in the app
+- [x] Archiving is blocked while the candidate has an active application; allowed once all are Hired/Rejected/Withdrawn
+- [x] Unarchive always succeeds
+- [x] Default candidate list hides archived; "Show archived" toggle shows them and persists in the URL alongside search
+- [x] Archived candidate pages show no "Add application" form, and the endpoint refuses to create one
+- [x] Archived candidates' applications and history are unchanged
+- [x] The archive rule lives in the applications service layer (or uses a reverse relation); the candidates app still does not import from applications
+- [x] No delete action for candidates exists in the app
 
 ---
 

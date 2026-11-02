@@ -10,9 +10,11 @@ from .forms import ApplicationForm
 from .models import Application
 from .services import (
     ApplicationError,
+    ArchiveError,
     MoveError,
     ReasonRequiredError,
     active_application_count,
+    archive_candidate,
     board_columns,
     create_application,
     jobs_needing_attention,
@@ -84,6 +86,24 @@ def candidate_applications(request, candidate_pk):
         "applications/partials/candidate_applications.html",
         {"candidate": candidate, "form": form, "applications": applications},
     )
+
+
+@require_POST
+def candidate_archive(request, candidate_pk):
+    """The candidate page's Archive button. It lives here because archiving is blocked while
+    the candidate has an active application, and only this app knows the stages."""
+    candidate = get_object_or_404(Candidate, pk=candidate_pk)
+    try:
+        archive_candidate(candidate)
+    except ArchiveError as error:
+        # Blocked by an active application, or a stale page: a clear note, not an error page.
+        messages.info(request, str(error))
+    else:
+        messages.success(
+            request,
+            f"{candidate.full_name} archived. Their applications and history are kept.",
+        )
+    return redirect(candidate)
 
 
 def board(request, job_pk):

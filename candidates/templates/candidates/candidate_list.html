@@ -12,17 +12,34 @@
 
     {# Works as a plain GET form without JavaScript; with HTMX it searches as you type.          #}
     {# Each search pushes a Back-button step, so the 500 ms pause keeps half-typed words out of it. #}
-    <form method="get" action="{% url 'candidates:list' %}" class="mt-4" role="search">
+    {# hx-include sends both the search and the status, so one never resets the other.           #}
+    <form method="get" action="{% url 'candidates:list' %}" class="mt-4 flex flex-wrap items-center gap-4" role="search">
       <label class="input w-full max-w-md">
         <span class="sr-only">Search candidates</span>
         <input type="search" name="q" value="{{ query }}" placeholder="Search by name or email"
                autocomplete="off"
                hx-get="{% url 'candidates:list' %}"
                hx-trigger="input changed delay:500ms, search"
+               hx-include="closest form"
                hx-target="#candidate-results"
                hx-swap="outerHTML"
                hx-push-url="true">
       </label>
+      <label class="select w-auto">
+        <span class="label">Status</span>
+        <select name="status"
+                hx-get="{% url 'candidates:list' %}"
+                hx-trigger="change"
+                hx-include="closest form"
+                hx-target="#candidate-results"
+                hx-swap="outerHTML"
+                hx-push-url="true">
+          {% for value, label in status_filters.items %}
+          <option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit" class="btn btn-sm">Filter</button></noscript>
     </form>
 
     {% include "candidates/partials/candidate_results.html" %}

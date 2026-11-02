@@ -9,9 +9,20 @@
 <div class="card bg-base-100 shadow max-w-3xl mx-auto">
   <div class="card-body">
     <div class="flex items-start justify-between gap-4">
-      <h1 class="card-title text-2xl">{{ candidate.full_name }}</h1>
-      <a href="{% url 'candidates:edit' candidate.pk %}" class="btn btn-sm">Edit</a>
+      <h1 class="card-title text-2xl">
+        {{ candidate.full_name }}
+        {% if candidate.archived %}<span class="badge badge-neutral">Archived</span>{% endif %}
+      </h1>
+      <div class="flex gap-2">
+        <a href="{% url 'candidates:edit' candidate.pk %}" class="btn btn-sm">Edit</a>
+        {% include "candidates/partials/archive_dialog.html" %}
+      </div>
     </div>
+    {% if candidate.archived %}
+    <div role="alert" class="alert alert-info mt-4">
+      <span>This candidate is archived: hidden from the candidate list, and new applications can't be added. Unarchive them to bring them back.</span>
+    </div>
+    {% endif %}
 
     <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 mt-4">
       <dt class="font-semibold">Email</dt>

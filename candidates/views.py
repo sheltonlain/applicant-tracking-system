@@ -8,16 +8,31 @@ from django.views.decorators.http import require_POST
 
 from .forms import CandidateForm, ResumeForm
 from .models import Candidate
-from .services import ResumeUploadError, replace_resume, search_candidates
+from .services import (
+    STATUS_FILTERS,
+    CandidateStatusError,
+    ResumeUploadError,
+    replace_resume,
+    search_candidates,
+    unarchive_candidate,
+)
 
 CANDIDATES_PER_PAGE = 25
 
 
 def candidate_list(request):
     query = request.GET.get("q", "").strip()
-    candidates = search_candidates(query)
+    status = request.GET.get("status")
+    if status not in STATUS_FILTERS:
+        status = "active"  # Default, and the fallback for a hand-edited link like ?status=banana.
+    candidates = search_candidates(query, status)
     page_obj = Paginator(candidates, CANDIDATES_PER_PAGE).get_page(request.GET.get("page"))
-    context = {"page_obj": page_obj, "query": query}
+    context = {
+        "page_obj": page_obj,
+        "query": query,
+        "status": status,
+        "status_filters": STATUS_FILTERS,
+    }
     # HTMX search requests swap only the results table; normal visits get the whole page.
     # A Back-button history restore also needs the whole page, even though it comes from HTMX.
     if request.htmx and not request.htmx.history_restore_request:
@@ -70,6 +85,20 @@ def candidate_edit(request, pk):
         form.save()
         return redirect(candidate)
     return render(request, "candidates/candidate_form.html", {"form": form, "candidate": candidate})
+
+
+@require_POST
+def candidate_unarchive(request, pk):
+    # Archiving is handled by the applications app (applications:archive_candidate), because it
+    # is blocked while the candidate has active applications.
+    candidate = get_object_or_404(Candidate, pk=pk)
+    try:
+        unarchive_candidate(candidate)
+    except CandidateStatusError as error:
+        messages.info(request, str(error))  # A stale page: a friendly note, not an error page.
+    else:
+        messages.success(request, f"{candidate.full_name} unarchived.")
+    return redirect(candidate)
 
 
 def resume_download(request, pk):

@@ -30,6 +30,9 @@
   <p class="opacity-70">No applications yet.</p>
   {% endif %}
 
+  {% if candidate.archived %}
+  <p class="opacity-70 mt-6">Archived candidates can't get new applications. Unarchive this candidate to add one.</p>
+  {% else %}
   <h3 class="font-semibold mt-6">Add application</h3>
   {% if form.fields.job.queryset.exists %}
   <form hx-post="{% url 'applications:candidate_applications' candidate.pk %}"
@@ -39,5 +42,6 @@
   </form>
   {% else %}
   <p class="opacity-70">There are no open jobs this candidate hasn't already applied to.</p>
+  {% endif %}
   {% endif %}
 </section>

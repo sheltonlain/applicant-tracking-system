@@ -104,6 +104,22 @@ def test_htmx_request_gets_only_results_partial_and_normal_request_gets_full_pag
     assert "Jane Doe" in partial
 
 
+def test_status_filter_shows_active_by_default_or_only_archived_or_all(logged_in_client):
+    current = CandidateFactory(first_name="Jane", last_name="Current")
+    archived = CandidateFactory(first_name="Jane", last_name="Archived", archived=True)
+    CandidateFactory(first_name="Bob", last_name="Archived", archived=True)
+
+    def listed(params):
+        response = logged_in_client.get(reverse("candidates:list"), params)
+        return list(response.context["page_obj"])
+
+    assert listed({}) == [current]
+    assert listed({"q": "jane"}) == [current]
+    assert listed({"q": "jane", "status": "archived"}) == [archived]
+    assert listed({"q": "jane", "status": "all"}) == [archived, current]  # sorted by last name
+    assert listed({"status": "banana"}) == [current]  # a hand-edited link falls back to Active
+
+
 def test_pagination_links_preserve_the_search_query(logged_in_client):
     CandidateFactory.create_batch(30, first_name="Jane")
     CandidateFactory.create_batch(5, first_name="Bob")

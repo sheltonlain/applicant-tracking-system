@@ -47,6 +47,9 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - A card's "closed from" label is read off its reopen move from `allowed_moves()`, never a separate lookup, so the label and the Reopen button always agree.
 - The job detail page lazy-loads its closed-job warning from `applications` (`applications:job_warning`) via HTMX; the board and job page share `applications/partials/closed_job_warning.html`.
 - The board's closed-job warning lives inside `#board`, so every move redraws it, and its count is taken from the board's own active columns.
+- Archiving a candidate is a cross-app rule: `archive_candidate()` and its view live in `applications` (served at `/candidates/<pk>/archive/`), while unarchive stays in `candidates`. `create_application()` refuses archived candidates.
+- The candidate list's Status filter (Active / Archived / All, `?status=`) follows the job list's `STATUS_FILTERS` pattern; `Candidate.objects.not_archived()` is the default listing.
+- After adding a migration, apply it to the dev database (`uv run python manage.py migrate`) and include that in the manual verification steps.
 
 ## References
 
