@@ -28,6 +28,26 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-02 — Implemented Phase 10: application detail timeline
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 10`
+2. Yes
+3. Yes
+4. Yes
+5. Yes
+6. Yes
+7. Yes, manual verification passed
+8. leave it as is and proceed
+
+### Summary
+- **Outcome:** Added the application detail page at `/applications/<pk>/` (`views.detail`, `application_detail.html`). It shows the candidate, the job (department · location), a current-stage badge, the source and note, the applied date, and a DaisyUI timeline of every `StageChange` row, oldest first. Each row shows from → to (the first reads "Recorded → Applied"), the staff member (full name, falling back to username, tagged "deactivated" when inactive), the time, and the reason. The candidate's Applications panel and each board card now have a "Timeline" link. TDD covered two behaviors: every history row in order starting with Recorded, and past reject/withdraw reasons staying visible after reopening. Later tests cover the header details, deactivated users keeping their names, login being required, a 404 for a missing application, and both links. The existing `test_deleting_a_user_with_history_is_blocked` covers PROTECT. All 4 acceptance criteria are ticked, with 249 tests passing. CLAUDE.md was left unchanged at the user's request.
+- **Deviations:**
+  - The agent proposed two TDD behaviors rather than three, because the login requirement and the deactivated-user name follow existing patterns and would not have gone RED on their own. The user approved.
+  - The agent suggested a CLAUDE.md note about timeline attribution and unfiltered history, while leaning against it. The user chose to leave CLAUDE.md as is.
+- **Sideways:**
+  - The first version of the current-stage test matched the badge by exact class string and whitespace, which was brittle. Before running it, the agent added `id="current-stage"` to the badge and matched with a regex instead.
+
 ## 2026-11-02 — Implemented Phase 9: Reject, Withdraw, Reopen, and Mark Hired
 
 ### Prompts

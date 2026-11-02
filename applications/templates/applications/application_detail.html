@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{{ application.candidate.full_name }} · {{ application.job.title }} · ATS{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mb-2 flex flex-wrap gap-x-4 text-sm">
+  <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover">← {{ application.candidate.full_name }}</a>
+  <a href="{% url 'applications:board' application.job.pk %}" class="link link-hover">← {{ application.job.title }} board</a>
+</div>
+<div class="card bg-base-100 shadow max-w-3xl mx-auto">
+  <div class="card-body">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="card-title text-2xl">
+          <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover">{{ application.candidate.full_name }}</a>
+        </h1>
+        <p>
+          <a href="{{ application.job.get_absolute_url }}" class="link">{{ application.job.title }}</a>
+          <span class="opacity-70">{{ application.job.department }} · {{ application.job.location }}</span>
+        </p>
+      </div>
+      <span id="current-stage" class="badge badge-lg {% if application.stage == 'hired' %}badge-success{% elif application.stage == 'rejected' or application.stage == 'withdrawn' %}badge-neutral{% else %}badge-primary{% endif %}">
+        {% if application.stage == "hired" %}🔒 {% endif %}{{ application.get_stage_display }}
+      </span>
+    </div>
+
+    <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 mt-4">
+      <dt class="font-semibold">Source</dt>
+      <dd>{{ application.get_source_display }}{% if application.source_note %} · {{ application.source_note }}{% endif %}</dd>
+
+      <dt class="font-semibold">Applied</dt>
+      <dd>{{ application.created_at|date:"M j, Y" }}</dd>
+    </dl>
+
+    <h2 class="font-semibold mt-6">Timeline</h2>
+    {# Every history row, oldest first, from the first "Recorded" row onward. Each row keeps the #}
+    {# staff member who made it, even after their account is deactivated (PROTECT on the user). #}
+    <ul class="timeline timeline-vertical timeline-compact mt-2">
+      {% for change in history %}
+      <li data-history-row>
+        {% if not forloop.first %}<hr>{% endif %}
+        <div class="timeline-middle">
+          <span class="inline-block size-3 rounded-full {% if change.to_stage == 'rejected' or change.to_stage == 'withdrawn' %}bg-error{% elif change.to_stage == 'hired' %}bg-success{% else %}bg-primary{% endif %}"></span>
+        </div>
+        <div class="timeline-end timeline-box mb-4 w-full">
+          <div class="font-semibold">
+            {% if change.from_stage %}{{ change.get_from_stage_display }}{% else %}Recorded{% endif %}
+            → {{ change.get_to_stage_display }}
+          </div>
+          <div class="text-xs opacity-70">
+            by {{ change.user.get_full_name|default:change.user.get_username }}{% if not change.user.is_active %} <span class="badge badge-ghost badge-xs">deactivated</span>{% endif %}
+            · <time datetime="{{ change.changed_at|date:'c' }}">{{ change.changed_at|date:"M j, Y, g:i a" }}</time>
+          </div>
+          {% if change.reason %}<p class="whitespace-pre-line mt-1">{{ change.reason }}</p>{% endif %}
+        </div>
+        {% if not forloop.last %}<hr>{% endif %}
+      </li>
+      {% empty %}
+      <li class="opacity-70">No history recorded.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

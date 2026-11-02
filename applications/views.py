@@ -68,6 +68,17 @@ def board(request, job_pk):
     return render(request, "applications/board.html", _board_context(job))
 
 
+def detail(request, pk):
+    """One application: its current stage and the full timeline of stage changes."""
+    application = get_object_or_404(Application.objects.select_related("candidate", "job"), pk=pk)
+    history = application.stage_changes.select_related("user")
+    return render(
+        request,
+        "applications/application_detail.html",
+        {"application": application, "history": history},
+    )
+
+
 @require_POST
 def move(request, pk):
     """Move one application to the posted `to_stage`, then redraw that job's whole board."""

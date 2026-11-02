@@ -217,10 +217,10 @@ An application detail page at `/applications/<pk>/` showing current stage and a 
 
 ### Acceptance criteria
 
-- [ ] Timeline lists every history row in order, starting with the initial "recorded" row
-- [ ] Reasons for past rejections/withdrawals are visible
-- [ ] Deactivating a user keeps their name on history rows; deleting a user with history is blocked (PROTECT)
-- [ ] Detail page requires login
+- [x] Timeline lists every history row in order, starting with the initial "recorded" row
+- [x] Reasons for past rejections/withdrawals are visible
+- [x] Deactivating a user keeps their name on history rows; deleting a user with history is blocked (PROTECT)
+- [x] Detail page requires login
 
 ---
 

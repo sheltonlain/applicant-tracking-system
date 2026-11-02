@@ -21,6 +21,7 @@
             <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover font-semibold">{{ application.candidate.full_name }}</a>
             <p class="text-xs opacity-70">
               {{ application.get_source_display }}{% if application.source_note %} · {{ application.source_note }}{% endif %}
+              · <a href="{% url 'applications:detail' application.pk %}" class="link">Timeline</a>
             </p>
             {% if column.key == "closed" %}
             {% if application.stage == "hired" %}

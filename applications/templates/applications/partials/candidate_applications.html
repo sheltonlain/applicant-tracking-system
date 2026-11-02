@@ -5,7 +5,7 @@
   <div class="overflow-x-auto mt-2">
     <table class="table table-sm">
       <thead>
-        <tr><th>Job</th><th>Stage</th><th>Source</th><th>Applied</th></tr>
+        <tr><th>Job</th><th>Stage</th><th>Source</th><th>Applied</th><th></th></tr>
       </thead>
       <tbody>
         {% for application in applications %}
@@ -20,6 +20,7 @@
             {% if application.source_note %}<div class="text-xs opacity-70">{{ application.source_note }}</div>{% endif %}
           </td>
           <td>{{ application.created_at|date:"M j, Y" }}</td>
+          <td><a class="link" href="{% url 'applications:detail' application.pk %}">Timeline</a></td>
         </tr>
         {% endfor %}
       </tbody>
