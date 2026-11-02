@@ -42,6 +42,9 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - Stage moves post the target stage (`to_stage`), never an action like "advance"; `move_application` re-checks it against the stage saved in the database, so a double-click or stale page gets a friendly note instead of a second move.
 - Board buttons come only from `applications/stages.py` `allowed_moves()`; templates may filter which move kinds they draw, but never add a move the rules didn't return.
 - A refused HTMX move re-renders `#board` with an inline alert; a refused non-HTMX move redirects to the board with `messages.info(...)`.
+- Reject, Withdraw, Reopen, and Mark Hired never post straight from a card: they load a dialog from `GET /applications/<pk>/move/dialog/?to_stage=…` into the `#move-dialog` slot, which sits inside `#board` so redrawing the board after a move also closes the dialog.
+- A missing reason raises `ReasonRequiredError` (a `MoveError` subclass); for HTMX the move view re-renders only the dialog with the error (`retarget`/`reswap` to `#move-dialog`) and leaves the board untouched.
+- A card's "closed from" label is read off its reopen move from `allowed_moves()`, never a separate lookup, so the label and the Reopen button always agree.
 
 ## References
 

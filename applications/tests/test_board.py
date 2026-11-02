@@ -87,7 +87,7 @@ def test_board_page_shows_every_column_and_only_allowed_buttons(logged_in_client
     # Applied: Advance only (no Back). Interview: Advance and Back.
     assert card_targets(applied) == [Stage.SCREENING]
     assert card_targets(columns["interview"][1]) == [Stage.FINAL_REVIEW, Stage.SCREENING]
-    # Offer: Back only for now; Mark Hired needs a confirmation dialog first.
+    # Offer: Back is the only direct post; Mark Hired opens a confirmation dialog first.
     assert card_targets(columns["offer"][1]) == [Stage.FINAL_REVIEW]
     # Closed column holds Hired and Rejected, with their stage shown and no move buttons.
     closed_count, closed = columns["closed"]

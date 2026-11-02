@@ -3,7 +3,7 @@ from django.db import IntegrityError, transaction
 from jobs.models import JobOpening
 
 from .models import Application, StageChange
-from .stages import ACTIVE_STAGES, FINAL_STAGES, allowed_moves
+from .stages import ACTIVE_STAGES, FINAL_STAGES, allowed_moves, find_move
 
 
 class ApplicationError(Exception):
@@ -54,6 +54,10 @@ class MoveError(Exception):
     """The stage move isn't allowed by the rules, or is missing a required reason."""
 
 
+class ReasonRequiredError(MoveError):
+    """The move is allowed, but it is a reject, withdraw, or reopen and no reason was given."""
+
+
 @transaction.atomic
 def move_application(application, *, to_stage, user, reason=""):
     """Move the application to `to_stage`, recording who did it, when, and why.
@@ -66,7 +70,7 @@ def move_application(application, *, to_stage, user, reason=""):
     """
     # Re-read (and lock, on databases that support it) so the check uses the current stage.
     application = Application.objects.select_for_update().get(pk=application.pk)
-    move = next((m for m in allowed_moves(application) if m.to_stage == to_stage), None)
+    move = find_move(application, to_stage)
     if move is None:
         raise MoveError(
             f"{application.candidate.full_name} can't be moved from "
@@ -74,7 +78,7 @@ def move_application(application, *, to_stage, user, reason=""):
         )
     reason = reason.strip()
     if move.needs_reason and not reason:
-        raise MoveError(f"A reason is required to move to {_stage_label(to_stage)}.")
+        raise ReasonRequiredError(f"A reason is required to move to {_stage_label(to_stage)}.")
     from_stage = application.stage
     application.stage = to_stage
     application.save(update_fields=["stage", "updated_at"])
@@ -93,14 +97,22 @@ def board_columns(job):
 
     Each column has a key, a label, and its cards; each card is an application plus the moves
     the stage rules allow from where it is, so the template only draws allowed buttons.
+    Rejected and withdrawn cards also carry `closed_from`, the label of the stage they were
+    closed from. It is read off the reopen move, so the label and the Reopen button always agree.
     """
     applications = job.applications.select_related("candidate").order_by(
         "candidate__last_name", "candidate__first_name", "pk"
     )
     by_stage = {stage: [] for stage in Application.Stage}
     for application in applications:
+        moves = allowed_moves(application)
+        reopen = next((m for m in moves if m.kind == "reopen"), None)
         by_stage[application.stage].append(
-            {"application": application, "moves": allowed_moves(application)}
+            {
+                "application": application,
+                "moves": moves,
+                "closed_from": reopen.to_stage_label if reopen else None,
+            }
         )
     columns = [
         {"key": stage.value, "label": stage.label, "cards": by_stage[stage]}

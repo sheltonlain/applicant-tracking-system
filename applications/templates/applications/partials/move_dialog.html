@@ -1,0 +1,48 @@
+{# The dialog for a move that needs one: a reason (Reject, Withdraw, Reopen) or a confirmation    #}
+{# (Mark Hired). Loaded into #move-dialog on the board. Submitting redraws the whole #board, which #}
+{# closes the dialog; a missing reason redraws only this dialog, with the error.                 #}
+{% with candidate=application.candidate %}
+<div class="modal modal-open" role="dialog" aria-labelledby="move-dialog-title">
+  <div class="modal-box">
+    <h3 id="move-dialog-title" class="text-lg font-bold">
+      {% if move.kind == "advance" %}Mark {{ candidate.full_name }} as Hired?
+      {% elif move.kind == "reject" %}Reject {{ candidate.full_name }}?
+      {% elif move.kind == "withdraw" %}Withdraw {{ candidate.full_name }}?
+      {% else %}Reopen {{ candidate.full_name }}?{% endif %}
+    </h3>
+    <p class="mt-1 text-sm opacity-70">
+      {{ application.job.title }} — {{ application.get_stage_display }} → {{ move.to_stage_label }}
+    </p>
+    {% if move.kind == "advance" %}
+    <div role="alert" class="alert alert-warning mt-4">
+      <span>Hired is permanent: the application can't be moved again afterwards. The job stays open.</span>
+    </div>
+    {% endif %}
+    <form method="post" action="{% url 'applications:move' application.pk %}"
+          hx-post="{% url 'applications:move' application.pk %}" hx-target="#board" hx-swap="outerHTML"
+          class="mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="to_stage" value="{{ move.to_stage }}">
+      {% if move.needs_reason %}
+      <fieldset class="fieldset">
+        <label class="fieldset-legend" for="move-reason">Reason</label>
+        <textarea id="move-reason" name="reason" rows="3" required autofocus
+                  class="textarea w-full {% if error %}textarea-error{% endif %}"></textarea>
+        {% if error %}<p class="text-error text-sm">{{ error }}</p>{% endif %}
+      </fieldset>
+      {% elif error %}
+      <p class="text-error text-sm">{{ error }}</p>
+      {% endif %}
+      <div class="modal-action">
+        <button type="button" class="btn btn-sm" onclick="this.closest('.modal').remove()">Cancel</button>
+        <button type="submit" class="btn btn-sm {% if move.kind == 'advance' %}btn-success{% elif move.kind == 'reopen' %}btn-primary{% else %}btn-error{% endif %}">
+          {% if move.kind == "advance" %}Mark Hired
+          {% elif move.kind == "reject" %}Reject
+          {% elif move.kind == "withdraw" %}Withdraw
+          {% else %}Reopen to {{ move.to_stage_label }}{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endwith %}

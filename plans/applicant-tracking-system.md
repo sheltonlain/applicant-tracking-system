@@ -197,13 +197,13 @@ From any active stage, a Close menu on each card offers Reject and Withdraw; clo
 
 ### Acceptance criteria
 
-- [ ] Reject/Withdraw available from every active stage; Reopen only from Rejected/Withdrawn
-- [ ] Blank reasons are refused, with the error shown in the modal without a page reload
-- [ ] Reopen returns to the exact stage the application was closed from, including after multiple close/reopen cycles
-- [ ] Mark Hired requires confirmation in a modal
-- [ ] No move is possible out of Hired, even via a crafted request
-- [ ] Hiring leaves the job Open
-- [ ] Closed-column cards show the stage they were closed from
+- [x] Reject/Withdraw available from every active stage; Reopen only from Rejected/Withdrawn
+- [x] Blank reasons are refused, with the error shown in the modal without a page reload
+- [x] Reopen returns to the exact stage the application was closed from, including after multiple close/reopen cycles
+- [x] Mark Hired requires confirmation in a modal
+- [x] No move is possible out of Hired, even via a crafted request
+- [x] Hiring leaves the job Open
+- [x] Closed-column cards show the stage they were closed from
 
 ---
 

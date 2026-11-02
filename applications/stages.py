@@ -32,6 +32,10 @@ class Move:
     kind: str  # "advance", "back", "reject", "withdraw", or "reopen"
 
     @property
+    def to_stage_label(self):
+        return Stage(self.to_stage).label
+
+    @property
     def needs_reason(self):
         return self.kind in {"reject", "withdraw", "reopen"}
 
@@ -65,3 +69,8 @@ def allowed_moves(application):
         reopen_to = closed_from_stage(application)
         return [Move(reopen_to, "reopen")] if reopen_to else []
     return []  # Hired is permanent.
+
+
+def find_move(application, to_stage):
+    """The allowed move to `to_stage` from the application's current stage, or None."""
+    return next((m for m in allowed_moves(application) if m.to_stage == to_stage), None)

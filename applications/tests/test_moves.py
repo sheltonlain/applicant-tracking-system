@@ -151,3 +151,30 @@ def test_stale_object_cannot_repeat_a_move(staff_user):
     application.refresh_from_db()
     assert application.stage == Stage.SCREENING
     assert application.stage_changes.count() == 2
+
+
+def test_reopen_returns_to_the_stage_of_the_latest_close_across_cycles(staff_user):
+    application = application_in(Stage.INTERVIEW, staff_user)
+
+    def move(to_stage):
+        move_application(application, to_stage=to_stage, user=staff_user, reason="Because")
+        application.refresh_from_db()
+
+    # Cycle 1: rejected from Interview, reopened to Interview.
+    move(Stage.REJECTED)
+    move(Stage.INTERVIEW)
+    assert application.stage == Stage.INTERVIEW
+    # Cycle 2: advanced, then withdrawn from Final Review; reopen goes to Final Review.
+    move(Stage.FINAL_REVIEW)
+    move(Stage.WITHDRAWN)
+    move(Stage.FINAL_REVIEW)
+    assert application.stage == Stage.FINAL_REVIEW
+    # Cycle 3: back to Screening and rejected there; reopen goes to Screening, not an older stage.
+    move(Stage.INTERVIEW)
+    move(Stage.SCREENING)
+    move(Stage.REJECTED)
+    for older_stage in [Stage.FINAL_REVIEW, Stage.INTERVIEW]:
+        with pytest.raises(MoveError):
+            move_application(application, to_stage=older_stage, user=staff_user, reason="x")
+    move(Stage.SCREENING)
+    assert application.stage == Stage.SCREENING

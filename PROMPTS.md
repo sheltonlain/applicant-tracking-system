@@ -28,6 +28,32 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-02 — Implemented Phase 9: Reject, Withdraw, Reopen, and Mark Hired
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 9`
+2. Yes, go ahead with those three
+3. yes, make it pass
+4. yes, move on to behavior 2
+5. yes, make it pass
+6. yes, move on to behavior 3
+7. yes, make it pass
+8. yes, continue with the rest of the phase
+9. Manual verification passed, move on to the acceptance criteria
+10. Add all three to CLAUDE.md
+
+### Summary
+- **Outcome:** Phase 8's move service already enforced reject, withdraw, reopen, and Hired rules, so Phase 9 was mostly board UI. Added `ReasonRequiredError` (a `MoveError` subclass) and `stages.find_move()`, now shared by the service and views. Added a dialog endpoint `GET /applications/<pk>/move/dialog/?to_stage=…` that loads `partials/move_dialog.html` into a `#move-dialog` slot inside `#board`: a reason form for Reject, Withdraw, and Reopen, or a "Hired is permanent" confirmation for Mark Hired. A stale or crafted dialog request redraws the board with a note instead. A blank reason on an HTMX move redraws only the dialog with the error (`retarget`/`reswap`). A successful move redraws the board, which also closes the dialog. Cards gained a Close ▾ menu (Reject…, Withdraw…), Mark Hired… on Offer, ↺ Reopen… on closed cards, and a 🔒 Hired badge. Closed-column badges read e.g. "Rejected · from Interview", taken from the reopen move. TDD covered three behaviors: the blank-reason dialog error, the dialog endpoint for each move, and the "closed from" label. Later tests cover card buttons, a successful reject, the non-HTMX blank reason, stale, skipped, and unknown dialog requests, login, POST refusal, crafted moves out of Hired, hiring leaving the job Open, and reopen across three close/reopen cycles. All 7 acceptance criteria are ticked, with 242 tests passing. Three conventions were added to CLAUDE.md (dialog loading, `ReasonRequiredError` handling, closed-from label source).
+- **Deviations:**
+  - The agent chose without asking, and stated the choices in the plan before TDD (not objected to): a separate dialog URL instead of inline dialogs per card, and a non-HTMX visit to the dialog URL redirecting to the board rather than a full-page form.
+  - During behavior 2 the agent split the stale-board case out of the TDD test into a regular test written afterwards, to keep one test per cycle, and said so when showing the RED test.
+  - No follow-up questions or overridden recommendations this session.
+- **Sideways:**
+  - Behavior 1's first run failed with `KeyError` on a missing response header rather than an assertion. The agent switched to `response.get(...)` (a mechanical fix, noted) to get a real RED.
+  - A shell command editing `services.py` hung on the `python3` alias again (same problem as Phases 7 and 8). The agent stopped it, confirmed nothing had changed, and made the edits with the Edit tool.
+  - A later shell heredoc adding the remaining tests failed to parse before running. The agent confirmed nothing had been written and added the tests with Edit.
+  - The first board template drew both a stage badge and a separate 🔒 Hired badge on Hired cards; the agent merged them before running tests.
+
 ## 2026-11-01 — Implemented Phase 8: pipeline board with Advance and Back
 
 ### Prompts

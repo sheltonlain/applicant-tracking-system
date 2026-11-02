@@ -4,6 +4,9 @@
   {% if error %}
   <div role="alert" class="alert alert-info mb-4"><span>{{ error }}</span></div>
   {% endif %}
+  {# Reason and Mark Hired dialogs load here. It sits inside #board, so redrawing the board after #}
+  {# a move also closes the dialog.                                                               #}
+  <div id="move-dialog"></div>
   <div class="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
     {% for column in columns %}
     <section id="column-{{ column.key }}" data-count="{{ column.cards|length }}" class="bg-base-100 rounded-box shadow-sm p-3">
@@ -20,11 +23,16 @@
               {{ application.get_source_display }}{% if application.source_note %} · {{ application.source_note }}{% endif %}
             </p>
             {% if column.key == "closed" %}
-            <span class="badge badge-outline badge-sm">{{ application.get_stage_display }}</span>
+            {% if application.stage == "hired" %}
+            <span class="badge badge-success badge-sm" title="Hired is permanent: no further moves">🔒 Hired</span>
+            {% else %}
+            <span class="badge badge-outline badge-sm">{{ application.get_stage_display }}{% if card.closed_from %} · from {{ card.closed_from }}{% endif %}</span>
+            {% endif %}
             {% endif %}
             <div class="flex flex-wrap gap-1 mt-1">
-              {# Buttons come only from the stage rules (card.moves). Mark Hired, Reject, Withdraw, #}
-              {# and Reopen need a dialog first, so only Advance and Back are drawn here for now.   #}
+              {# Buttons come only from the stage rules (card.moves). Advance and Back post straight #}
+              {# away; Mark Hired, Reject, Withdraw, and Reopen load a dialog into #move-dialog first. #}
+              {% url 'applications:move_dialog' application.pk as dialog_url %}
               {% for m in card.moves %}
               {% if m.kind == "back" or m.kind == "advance" and m.to_stage != "hired" %}
               <form method="post" action="{% url 'applications:move' application.pk %}"
@@ -35,8 +43,30 @@
                   {% if m.kind == "advance" %}Advance →{% else %}← Back{% endif %}
                 </button>
               </form>
+              {% elif m.kind == "advance" %}
+              <button type="button" class="btn btn-xs btn-success"
+                      hx-get="{{ dialog_url }}?to_stage={{ m.to_stage }}" hx-target="#move-dialog">Mark Hired…</button>
+              {% elif m.kind == "reopen" %}
+              <button type="button" class="btn btn-xs btn-outline btn-info"
+                      hx-get="{{ dialog_url }}?to_stage={{ m.to_stage }}" hx-target="#move-dialog">↺ Reopen…</button>
               {% endif %}
               {% endfor %}
+              {% if column.key != "closed" %}
+              <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-xs btn-ghost">Close ▾</div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 w-32 p-1 shadow">
+                  {% for m in card.moves %}
+                  {% if m.kind == "reject" or m.kind == "withdraw" %}
+                  <li>
+                    <button type="button" hx-get="{{ dialog_url }}?to_stage={{ m.to_stage }}" hx-target="#move-dialog">
+                      {% if m.kind == "reject" %}Reject…{% else %}Withdraw…{% endif %}
+                    </button>
+                  </li>
+                  {% endif %}
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
             </div>
           </div>
         </div>
