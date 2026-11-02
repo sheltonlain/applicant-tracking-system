@@ -272,8 +272,8 @@ A management command in the applications app that loads a fixed, hand-written da
 
 ### Acceptance criteria
 
-- [ ] Running the command on an empty database creates the dataset and prints the demo login
-- [ ] Every stage has at least one application; the closed job appears under "Needs attention"
-- [ ] All history is created via the move service (no direct history writes)
-- [ ] Running on a non-empty database without the reset option refuses and changes nothing
-- [ ] Running with the reset option clears and reloads the data
+- [x] Running the command on an empty database creates the dataset and prints the demo login
+- [x] Every stage has at least one application; the closed job appears under "Needs attention"
+- [x] All history is created via the move service (no direct history writes)
+- [x] Running on a non-empty database without the reset option refuses and changes nothing
+- [x] Running with the reset option clears and reloads the data

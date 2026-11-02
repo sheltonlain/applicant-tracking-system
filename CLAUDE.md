@@ -15,6 +15,7 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - `uv run python manage.py tailwind runserver` — dev server + Tailwind watcher
 - `uv run pytest` — tests
 - `uv run ruff check .` / `uv run ruff format .` — lint / format
+- `uv run python manage.py load_demo_data [--reset]` — load the demo dataset; it only runs with `DEBUG` on, refuses a database that already has data unless you pass `--reset`, and never deletes user accounts
 
 ## Apps
 
@@ -49,6 +50,7 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - The board's closed-job warning lives inside `#board`, so every move redraws it, and its count is taken from the board's own active columns.
 - Archiving a candidate is a cross-app rule: `archive_candidate()` and its view live in `applications` (served at `/candidates/<pk>/archive/`), while unarchive stays in `candidates`. `create_application()` refuses archived candidates.
 - The candidate list's Status filter (Active / Archived / All, `?status=`) follows the job list's `STATUS_FILTERS` pattern; `Candidate.objects.not_archived()` is the default listing.
+- Demo data goes only through the services (`create_application`, `move_application`, `close_job`, `archive_candidate`), never direct model writes for status or history. Any new rule should get matching demo data.
 - After adding a migration, apply it to the dev database (`uv run python manage.py migrate`) and include that in the manual verification steps.
 
 ## References

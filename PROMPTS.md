@@ -28,6 +28,35 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-02 — Implemented Phase 13: demo data command
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 13`
+2. yes
+3. I approve
+4. I approve
+5. I approve
+6. I approve
+7. I approve
+8. I approve
+9. Manual verification passed, everything works
+10. add them as written
+
+### Summary
+- **Outcome:** Added `uv run python manage.py load_demo_data` in `applications/management/commands/load_demo_data.py`. It loads a fixed dataset in one transaction:
+  - 7 skills and 3 jobs. Backend Developer and Product Designer stay open. Marketing Intern is closed with `close_job()` after its applications are recorded, so it appears under "Needs attention".
+  - 15 candidates, including Chloe with two applications and Omar, who is archived with `archive_candidate()`.
+  - 16 applications covering all 8 stages, recorded with `create_application()` and moved only with `move_application()`. Reject, withdraw and reopen moves have reasons, and Hannah's history has a reject → reopen cycle.
+  - A non-admin `demo` user with a new random password each run, printed to the terminal.
+
+  The command refuses to run with `DEBUG` off. It also refuses when any candidate, job, skill or application exists, unless `--reset` is passed (user accounts don't count). `--reset` deletes that data in PROTECT-safe order inside the same transaction, keeps user accounts, and deletes old résumé files only after the commit. TDD covered three behaviors: loading an empty database, refusing a non-empty one, and reset-and-reload. Five more tests cover the DEBUG guard, history created only through the services (checked by wrapping both service functions and counting their calls), history that follows the stage rules, the dataset's promised contents, and résumé cleanup on reset. The README has a Demo data section, and two lines were added to CLAUDE.md. All 5 acceptance criteria are ticked, with 308 tests passing.
+- **Deviations:**
+  - The agent chose without asking, and stated the choices before TDD (not objected to): the command name, users not counting as "data", `--reset` keeping user accounts, a random demo password, and a DEBUG-only guard.
+- **Sideways:**
+  - The first full-suite run took about 2.5 minutes and hit the 2-minute tool timeout, so it finished in the background. The user's next "I approve" arrived before the result. The agent checked that the suite passed (301) before going on.
+  - Behavior 3's RED wasn't a clean assertion failure: once `--reset` was added as an option that did nothing yet, the test failed on the command's own refusal error. The agent said so when asking for approval.
+  - The formatter wrapped the long candidate rows, so the agent removed the leftover `# noqa: E501` comments. It also changed one demo reason from "her portfolio" to "the portfolio".
+
 ## 2026-11-02 — Implemented Phase 12: archive and unarchive candidates
 
 ### Prompts
