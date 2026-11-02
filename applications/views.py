@@ -1,11 +1,20 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 from django_htmx.http import HttpResponseClientRedirect
 
 from candidates.models import Candidate
+from jobs.models import JobOpening
 
 from .forms import ApplicationForm
-from .services import ApplicationError, create_application
+from .models import Application
+from .services import (
+    ApplicationError,
+    MoveError,
+    board_columns,
+    create_application,
+    move_application,
+)
 
 
 def dashboard(request):
@@ -49,3 +58,37 @@ def candidate_applications(request, candidate_pk):
         "applications/partials/candidate_applications.html",
         {"candidate": candidate, "form": form, "applications": applications},
     )
+
+
+def board(request, job_pk):
+    """One job's pipeline board: a column per active stage plus a "Closed" column."""
+    job = get_object_or_404(JobOpening, pk=job_pk)
+    return render(request, "applications/board.html", _board_context(job))
+
+
+@require_POST
+def move(request, pk):
+    """Move one application to the posted `to_stage`, then redraw that job's whole board."""
+    application = get_object_or_404(Application.objects.select_related("job"), pk=pk)
+    job = application.job
+    error = None
+    try:
+        move_application(
+            application,
+            to_stage=request.POST.get("to_stage", ""),
+            user=request.user,
+            reason=request.POST.get("reason", "").strip(),
+        )
+    except MoveError as exc:
+        # A stale board, a double click, or a crafted request: a friendly note, not an error page.
+        error = str(exc)
+    if request.htmx:
+        return render(request, "applications/partials/board.html", _board_context(job, error))
+    # Without HTMX (e.g. JavaScript off), go back to the full board and say what happened there.
+    if error:
+        messages.info(request, error)
+    return redirect("applications:board", job_pk=job.pk)
+
+
+def _board_context(job, error=None):
+    return {"job": job, "columns": board_columns(job), "error": error}

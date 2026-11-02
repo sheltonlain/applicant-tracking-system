@@ -3,6 +3,7 @@ from django.db import IntegrityError, transaction
 from jobs.models import JobOpening
 
 from .models import Application, StageChange
+from .stages import ACTIVE_STAGES, FINAL_STAGES, allowed_moves
 
 
 class ApplicationError(Exception):
@@ -47,6 +48,72 @@ def create_application(*, candidate, job, source, source_note="", user):
         application=application, from_stage="", to_stage=Application.Stage.APPLIED, user=user
     )
     return application
+
+
+class MoveError(Exception):
+    """The stage move isn't allowed by the rules, or is missing a required reason."""
+
+
+@transaction.atomic
+def move_application(application, *, to_stage, user, reason=""):
+    """Move the application to `to_stage`, recording who did it, when, and why.
+
+    The stage and its history row are saved in one transaction: both happen or neither does.
+
+    Raises MoveError, and changes nothing, if the stage rules (stages.allowed_moves) don't allow
+    the move, or if it is a reject, withdraw, or reopen without a reason. Checked against the
+    stage saved in the database, so a stale page or a crafted request can't skip ahead.
+    """
+    # Re-read (and lock, on databases that support it) so the check uses the current stage.
+    application = Application.objects.select_for_update().get(pk=application.pk)
+    move = next((m for m in allowed_moves(application) if m.to_stage == to_stage), None)
+    if move is None:
+        raise MoveError(
+            f"{application.candidate.full_name} can't be moved from "
+            f"{application.get_stage_display()} to {_stage_label(to_stage)}."
+        )
+    reason = reason.strip()
+    if move.needs_reason and not reason:
+        raise MoveError(f"A reason is required to move to {_stage_label(to_stage)}.")
+    from_stage = application.stage
+    application.stage = to_stage
+    application.save(update_fields=["stage", "updated_at"])
+    StageChange.objects.create(
+        application=application,
+        from_stage=from_stage,
+        to_stage=to_stage,
+        user=user,
+        reason=reason,
+    )
+    return application
+
+
+def board_columns(job):
+    """The pipeline board for one job: a column per active stage, then one "Closed" column.
+
+    Each column has a key, a label, and its cards; each card is an application plus the moves
+    the stage rules allow from where it is, so the template only draws allowed buttons.
+    """
+    applications = job.applications.select_related("candidate").order_by(
+        "candidate__last_name", "candidate__first_name", "pk"
+    )
+    by_stage = {stage: [] for stage in Application.Stage}
+    for application in applications:
+        by_stage[application.stage].append(
+            {"application": application, "moves": allowed_moves(application)}
+        )
+    columns = [
+        {"key": stage.value, "label": stage.label, "cards": by_stage[stage]}
+        for stage in ACTIVE_STAGES
+    ]
+    closed_cards = [card for stage in FINAL_STAGES for card in by_stage[stage]]
+    columns.append({"key": "closed", "label": "Closed", "cards": closed_cards})
+    return columns
+
+
+def _stage_label(stage):
+    # A crafted request may name a stage that doesn't exist; show it as sent instead of crashing.
+    return dict(Application.Stage.choices).get(stage, stage)
 
 
 def _already_applied_message(candidate, job):

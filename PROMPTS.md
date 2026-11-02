@@ -28,6 +28,31 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 8: pipeline board with Advance and Back
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 8`
+2. Yes, go ahead with those three
+3. yes, make it pass
+4. yes, move on to behavior 2
+5. yes, make it pass
+6. yes, move on to behavior 3
+7. yes, make it pass
+8. yes, continue with the rest of the phase
+9. Manual verification passed, move on to the acceptance criteria
+10. Add all three to CLAUDE.md
+
+### Summary
+- **Outcome:** Added `applications/stages.py`, the single home of the stage rules. It has `ACTIVE_STAGES`, `allowed_moves(application)`, and `closed_from_stage()`, which reads the reopen target from history. Added `move_application()` to the service layer. In one transaction it re-reads the application, refuses any move `allowed_moves` doesn't list (and reject/withdraw/reopen without a reason) with `MoveError`, saves the stage, and writes the history row. Added the pipeline board at `/applications/board/<job_pk>/`: five active-stage columns plus Closed, each with a count. Cards show the name, source, and note, and only Advance and Back buttons drawn from `allowed_moves`. Added the move endpoint `POST /applications/<pk>/move/`. HTMX requests get the whole `#board` redrawn, with an inline alert if the move is refused; non-HTMX requests redirect to the board. Added a "Pipeline board" button on the job detail page. TDD covered three behaviors: an allowed move writes stage plus history, every move outside the rules is refused and changes nothing (43 parametrized cases), and an HTMX Advance returns the whole board with both columns and counts updated. Later tests cover all 21 allowed moves, required reasons, transaction rollback, the stale double-click, closed jobs, login, and GET refusal. All 8 acceptance criteria are ticked, with 223 tests passing. Three conventions were added to CLAUDE.md (post `to_stage`, buttons only from `allowed_moves`, refused-move handling).
+- **Deviations:**
+  - The agent chose without asking, and stated the choices in the plan before TDD (not objected to): put the full rules table and the reason check in the service now, rather than in Phase 9, because the rules are defined once. Hide Mark Hired, Reject, Withdraw, and Reopen on the board until Phase 9 adds their dialogs. Post the target stage rather than an action name.
+  - No follow-up questions or overridden recommendations this session.
+- **Sideways:**
+  - The first behavior 2 run took 60 seconds, because each history row in the test setup created a new hashed-password user. The agent switched the setup to reuse `staff_user` (a mechanical test fix, noted at the time), which cut the run to 26 seconds.
+  - A shell command to make that edit hung on the bare `python` alias again (the same problem as Phase 7). The agent stopped it, confirmed the file was unchanged, and made the edit with the Edit tool.
+  - While making behavior 2 pass, the agent noticed that a made-up stage in a crafted request would crash the error message (`Stage("banana")`), and switched to a safe label lookup.
+  - To prove the rollback test was meaningful, the agent briefly removed `@transaction.atomic`, confirmed the test failed, and restored it.
+
 ## 2026-11-01 — Implemented Phase 7: add an application from the candidate page
 
 ### Prompts

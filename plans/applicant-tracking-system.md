@@ -176,14 +176,14 @@ The stage rules table and the single move service, plus a pipeline board at `/ap
 
 ### Acceptance criteria
 
-- [ ] Stage rules are defined once and used by both the service and the templates
-- [ ] Every allowed and blocked move from every stage is covered by service tests
-- [ ] Skipping stages, moving back from Applied, and hand-crafted invalid move requests are refused
-- [ ] A failed move leaves both stage and history unchanged (transaction test)
-- [ ] Each successful move writes a history row with from, to, user, and time
-- [ ] Advance/Back update the whole board section, including counts, without a page reload
-- [ ] Moves work on a closed job's board
-- [ ] Board and move endpoints require login
+- [x] Stage rules are defined once and used by both the service and the templates
+- [x] Every allowed and blocked move from every stage is covered by service tests
+- [x] Skipping stages, moving back from Applied, and hand-crafted invalid move requests are refused
+- [x] A failed move leaves both stage and history unchanged (transaction test)
+- [x] Each successful move writes a history row with from, to, user, and time
+- [x] Advance/Back update the whole board section, including counts, without a page reload
+- [x] Moves work on a closed job's board
+- [x] Board and move endpoints require login
 
 ---
 

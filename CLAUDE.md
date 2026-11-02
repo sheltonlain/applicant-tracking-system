@@ -39,6 +39,9 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - Cross-app UI is lazy-loaded, not imported: the candidate page loads its Applications panel from the `applications` app via HTMX (`hx-trigger="load"`).
 - Status-changing actions open a DaisyUI confirmation dialog first; job close/reopen uses the shared `jobs/partials/status_dialog.html` on both the list and detail pages.
 - Actions started from a list post a `next` URL to return to it; views follow `next` only if `url_has_allowed_host_and_scheme` accepts it.
+- Stage moves post the target stage (`to_stage`), never an action like "advance"; `move_application` re-checks it against the stage saved in the database, so a double-click or stale page gets a friendly note instead of a second move.
+- Board buttons come only from `applications/stages.py` `allowed_moves()`; templates may filter which move kinds they draw, but never add a move the rules didn't return.
+- A refused HTMX move re-renders `#board` with an inline alert; a refused non-HTMX move redirects to the board with `messages.info(...)`.
 
 ## References
 

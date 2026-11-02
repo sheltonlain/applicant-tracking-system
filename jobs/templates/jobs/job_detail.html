@@ -14,6 +14,8 @@
         <p class="opacity-70">{{ job.department }} · {{ job.location }}</p>
       </div>
       <div class="flex gap-2">
+        {# A link by URL name only: the jobs app still imports nothing from applications. #}
+        <a href="{% url 'applications:board' job.pk %}" class="btn btn-sm btn-primary">Pipeline board</a>
         <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-sm">Edit</a>
         {# One toggle button: an open job can only be closed, a closed job can only be reopened. #}
         {% include "jobs/partials/status_dialog.html" %}
