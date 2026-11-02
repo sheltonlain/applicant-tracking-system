@@ -8,7 +8,11 @@
     <h1 class="card-title text-2xl">{% if job %}Edit {{ job.title }}{% else %}New job opening{% endif %}</h1>
     <form method="post" novalidate>
       {% csrf_token %}
-      {% include "partials/form_fields.html" %}
+      {% include "partials/form_fields.html" with skip="skills" %}
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">Skills</legend>
+        {% include "jobs/partials/skill_picker.html" with skills=form.fields.skills.queryset checked=form.checked_skill_pks errors=form.skills.errors %}
+      </fieldset>
       <div class="card-actions justify-end mt-4">
         <a href="{% if job %}{{ job.get_absolute_url }}{% else %}{% url 'jobs:list' %}{% endif %}" class="btn btn-ghost">Cancel</a>
         <button type="submit" class="btn btn-primary">{% if job %}Save changes{% else %}Create job opening{% endif %}</button>

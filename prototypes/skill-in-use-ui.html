@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Showing which jobs use a skill</title>
+<!-- THROWAWAY PROTOTYPE (Phase 6 follow-up). Not production code. Everything lives in memory. -->
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="min-h-screen bg-base-200 pb-28">
+
+<!-- Same navbar as templates/base.html -->
+<div class="navbar bg-base-100 shadow-sm">
+  <div class="flex-1">
+    <a class="btn btn-ghost text-xl">ATS</a>
+    <a class="btn btn-ghost">Candidates</a>
+    <a class="btn btn-ghost">Jobs</a>
+  </div>
+  <div class="flex-none flex items-center gap-2">
+    <a class="btn btn-sm btn-primary">New candidate</a>
+    <div class="btn btn-ghost">staff</div>
+  </div>
+</div>
+
+<main class="container mx-auto p-6 grid lg:grid-cols-[1fr_20rem] gap-6 items-start">
+  <div>
+    <div id="messages" class="max-w-3xl mx-auto mb-4 space-y-2"></div>
+    <div id="page"></div>
+  </div>
+
+  <aside class="card bg-neutral text-neutral-content shadow text-sm">
+    <div class="card-body p-4">
+      <h2 class="font-bold">Prototype state</h2>
+      <p class="opacity-70 text-xs">Skills in the "database" and the jobs using each.</p>
+      <ul id="st-skills" class="space-y-1 text-xs"></ul>
+      <div class="font-semibold mt-2">Event log</div>
+      <ol id="st-log" class="list-decimal list-inside space-y-1 text-xs opacity-90 max-h-64 overflow-auto"></ol>
+      <button class="btn btn-xs mt-3" onclick="resetState()">Reset data</button>
+    </div>
+  </aside>
+</main>
+
+<!-- Variant switcher (not part of the design) -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black text-white rounded-full shadow-2xl px-4 py-2 flex items-center gap-3 font-mono text-sm">
+  <button class="px-2 hover:text-yellow-300" onclick="switchVariant(-1)">◀</button>
+  <span id="variant-label"></span>
+  <button class="px-2 hover:text-yellow-300" onclick="switchVariant(1)">▶</button>
+  <span class="opacity-50 text-xs">← → keys</span>
+</div>
+
+<script>
+const VARIANTS = [
+  { key: "A", name: "Jobs listed in the blocked-delete note", desc: "Click Delete on a skill in use. The note names each job (up to 10) with a link to its edit page." },
+  { key: "B", name: "“Used by” count opens a list", desc: "Click the “N jobs” count on any row to see the jobs before deleting. The delete note stays plain text." },
+  { key: "C", name: "Both A and B", desc: "The count opens a list, and the blocked-delete note also lists the jobs." },
+];
+const CAP = 10;
+
+const JOB_NAMES = [
+  "Data Analyst — Finance · Remote", "Junior Developer — Engineering · Remote", "Data Analyst — Marketing · Amarillo",
+  "BI Developer — Finance · Dallas", "Data Engineer — Engineering · Remote", "Reporting Analyst — Operations · Amarillo",
+  "Database Admin — IT · Dallas", "Backend Developer — Engineering · Austin", "Analytics Intern — Finance · Remote",
+  "Product Analyst — Product · Remote", "QA Engineer — Engineering · Austin", "Data Scientist — R&D · Remote",
+  "ETL Developer — IT · Dallas",
+];
+
+let skills, log;
+function resetState() {
+  skills = [
+    { name: "COBOL", jobs: [] },
+    { name: "Excel", jobs: [JOB_NAMES[0], JOB_NAMES[5]] },
+    { name: "Python", jobs: [JOB_NAMES[1], JOB_NAMES[4], JOB_NAMES[11]] },
+    { name: "SQL", jobs: [...JOB_NAMES] },            // 13 jobs: shows the 10-job cap
+    { name: "Tableau", jobs: [JOB_NAMES[3]] },
+  ];
+  log = ["Loaded the Skills page (/jobs/skills/)."];
+  document.getElementById("messages").innerHTML = "";
+  render();
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const listsInNote = () => current !== 1;   // A and C
+const countOpensList = () => current !== 0; // B and C
+
+let current = Number(localStorage.getItem("skill-in-use-variant") || 0);
+function switchVariant(step) {
+  current = (current + step + VARIANTS.length) % VARIANTS.length;
+  localStorage.setItem("skill-in-use-variant", current);
+  resetState();
+}
+document.addEventListener("keydown", e => {
+  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  if (e.key === "ArrowLeft") switchVariant(-1);
+  if (e.key === "ArrowRight") switchVariant(1);
+});
+
+function jobLink(name) {
+  return `<a class="link font-semibold" onclick="openJob('${esc(name)}')">${esc(name)}</a>`;
+}
+function openJob(name) {
+  log.push(`Clicked “${name}” → would open its Edit page to untick the skill.`);
+  render();
+}
+
+function deleteSkill(i) {
+  const skill = skills[i];
+  const box = document.getElementById("messages");
+  if (!skill.jobs.length) {
+    skills.splice(i, 1);
+    box.innerHTML = `<div role="alert" class="alert alert-success"><span>Skill “${esc(skill.name)}” deleted.</span></div>`;
+    log.push(`Deleted unused skill “${skill.name}”.`);
+    render(); return;
+  }
+  let body = `“${esc(skill.name)}” is used by ${plural(skill.jobs.length, "job opening")}, so it can't be deleted.`;
+  if (listsInNote()) {
+    const shown = skill.jobs.slice(0, CAP).map(jobLink).join(", ");
+    const more = skill.jobs.length > CAP ? ` …and ${skill.jobs.length - CAP} more.` : "";
+    body += ` Remove it from these jobs first: ${shown}${more}`;
+  } else {
+    body += " Remove it from those jobs first.";
+  }
+  box.innerHTML = `<div role="alert" class="alert alert-info"><span>${body}</span></div>`;
+  log.push(`Delete “${skill.name}” blocked (${plural(skill.jobs.length, "job")}).${listsInNote() ? " Note lists the jobs." : " Note is plain text."}`);
+  render();
+}
+
+function usedByCell(skill) {
+  const label = plural(skill.jobs.length, "job");
+  if (!countOpensList() || !skill.jobs.length) return label;
+  return `<details class="dropdown" ontoggle="if(this.open){log.push('Opened the job list for “${esc(skill.name)}”.');renderState()}">
+    <summary class="link cursor-pointer list-none">${label} ▾</summary>
+    <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-10 w-80 p-2 max-h-72 overflow-auto flex-nowrap">
+      ${skill.jobs.map(j => `<li><a onclick="openJob('${esc(j)}')">${esc(j)}</a></li>`).join("")}
+    </ul>
+  </details>`;
+}
+
+function render() {
+  const v = VARIANTS[current];
+  document.getElementById("variant-label").textContent = `${v.key} · ${v.name}`;
+  document.getElementById("page").innerHTML = `
+  <div class="max-w-3xl mx-auto mb-2"><a class="link link-hover text-sm">← All job openings</a></div>
+  <div class="card bg-base-100 shadow max-w-3xl mx-auto"><div class="card-body">
+    <div class="badge badge-warning badge-sm">Variant ${v.key}: ${v.name}</div>
+    <p class="text-sm opacity-70">${v.desc}</p>
+    <h1 class="card-title text-2xl mt-2">Skills</h1>
+    <p class="text-sm opacity-70">Skills are shared by every job that uses them, so a rename shows everywhere at once.</p>
+    <div class="join w-full mt-2 opacity-60">
+      <input class="input join-item w-full" placeholder="New skill name" disabled>
+      <button class="btn btn-primary join-item" disabled>Add skill</button>
+    </div>
+    <table class="table mt-4">
+      <thead><tr><th>Name</th><th>Used by</th><th class="text-right">Actions</th></tr></thead>
+      <tbody>
+        ${skills.map((s, i) => `<tr>
+          <td>${esc(s.name)}</td>
+          <td>${usedByCell(s)}</td>
+          <td><div class="flex justify-end gap-2">
+            <button class="btn btn-xs" disabled>Rename</button>
+            <button class="btn btn-xs btn-ghost text-error" onclick="deleteSkill(${i})">Delete</button>
+          </div></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div></div>`;
+  renderState();
+}
+function renderState() {
+  document.getElementById("st-skills").innerHTML =
+    skills.map(s => `<li><span class="font-semibold">${esc(s.name)}</span>: ${plural(s.jobs.length, "job")}</li>`).join("");
+  document.getElementById("st-log").innerHTML = log.map(l => `<li>${esc(l)}</li>`).join("");
+}
+resetState();
+</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · Adding a new skill from the job form</title>
+<!-- THROWAWAY PROTOTYPE (Phase 6 decision). Not production code. Everything lives in memory. -->
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="min-h-screen bg-base-200 pb-28">
+
+<!-- Same navbar as templates/base.html -->
+<div class="navbar bg-base-100 shadow-sm">
+  <div class="flex-1">
+    <a class="btn btn-ghost text-xl">ATS</a>
+    <a class="btn btn-ghost">Candidates</a>
+    <a class="btn btn-ghost">Jobs</a>
+  </div>
+  <div class="flex-none flex items-center gap-2">
+    <a class="btn btn-sm btn-primary">New candidate</a>
+    <div class="btn btn-ghost">staff</div>
+  </div>
+</div>
+
+<main class="container mx-auto p-6 grid lg:grid-cols-[1fr_20rem] gap-6 items-start">
+  <div>
+    <div id="messages" class="max-w-2xl mx-auto mb-4 space-y-2"></div>
+    <div id="page"></div>
+  </div>
+
+  <!-- State panel: what is in the "database" right now -->
+  <aside class="card bg-neutral text-neutral-content shadow text-sm">
+    <div class="card-body p-4">
+      <h2 class="font-bold">Prototype state</h2>
+      <p class="opacity-70 text-xs">What the database would hold right now.</p>
+      <div class="mt-2"><span class="font-semibold">All skills:</span> <span id="st-skills"></span></div>
+      <div><span class="font-semibold">Saved on this job:</span> <span id="st-job"></span></div>
+      <div class="font-semibold mt-2">Event log</div>
+      <ol id="st-log" class="list-decimal list-inside space-y-1 text-xs opacity-90 max-h-64 overflow-auto"></ol>
+      <button class="btn btn-xs mt-3" onclick="resetState()">Reset data</button>
+    </div>
+  </aside>
+</main>
+
+<!-- Variant switcher (not part of the design) -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-black text-white rounded-full shadow-2xl px-4 py-2 flex items-center gap-3 font-mono text-sm">
+  <button class="px-2 hover:text-yellow-300" onclick="switchVariant(-1)">◀</button>
+  <span id="variant-label"></span>
+  <button class="px-2 hover:text-yellow-300" onclick="switchVariant(1)">▶</button>
+  <span class="opacity-50 text-xs">← → keys</span>
+</div>
+
+<script>
+const VARIANTS = [
+  { key: "A", name: "Text box on the job form", desc: "Type new skill names (comma-separated) under the checkboxes. They're created and attached when you click Save." },
+  { key: "B", name: "HTMX “Add” button", desc: "Type a name and click Add. The skill is created right away and appears ticked in the list, without saving the job." },
+  { key: "C", name: "Skills page only", desc: "The job form only has checkboxes. New skills are added on a separate Skills page, linked from the form." },
+];
+
+// ---------- in-memory "database" ----------
+let db, form, log, view;
+function resetState() {
+  db = { skills: ["Excel", "Python", "SQL"], jobSkills: ["Python"] };
+  form = { checked: [...db.jobSkills], newText: "", error: "" };
+  log = ["Loaded the edit page for “Data Analyst — Finance · Remote”."];
+  view = "form";
+  render();
+}
+const find = name => db.skills.find(s => s.toLowerCase() === name.trim().toLowerCase());
+const sorted = () => [...db.skills].sort((a, b) => a.localeCompare(b));
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function note(msg) { log.push(msg); }
+function flash(text, kind = "success") {
+  document.getElementById("messages").innerHTML =
+    `<div role="alert" class="alert ${kind === "success" ? "alert-success" : "alert-info"}"><span>${esc(text)}</span></div>`;
+}
+function clearFlash() { document.getElementById("messages").innerHTML = ""; }
+
+let current = Number(localStorage.getItem("add-skill-variant") || 0);
+function switchVariant(step) {
+  current = (current + step + VARIANTS.length) % VARIANTS.length;
+  localStorage.setItem("add-skill-variant", current);
+  clearFlash();
+  resetState();
+}
+document.addEventListener("keydown", e => {
+  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  if (e.key === "ArrowLeft") switchVariant(-1);
+  if (e.key === "ArrowRight") switchVariant(1);
+});
+
+// ---------- shared pieces ----------
+function checkboxes() {
+  return `<div class="flex flex-wrap gap-x-6 gap-y-2" id="skill-boxes">
+    ${sorted().map(s => `<label class="label cursor-pointer gap-2">
+      <input type="checkbox" class="checkbox checkbox-sm" ${form.checked.includes(s) ? "checked" : ""}
+             onchange="toggle('${esc(s)}', this.checked)"> <span>${esc(s)}</span></label>`).join("")}
+  </div>`;
+}
+function toggle(s, on) { form.checked = on ? [...new Set([...form.checked, s])] : form.checked.filter(x => x !== s); }
+
+function fixedFields() {
+  // The other job fields, unchanged from the real form (shown greyed to keep focus on skills).
+  return `<div class="opacity-60 space-y-1">
+    <fieldset class="fieldset"><legend class="fieldset-legend">Title</legend><input class="input w-full" value="Data Analyst"></fieldset>
+    <fieldset class="fieldset"><legend class="fieldset-legend">Department</legend><input class="input w-full" value="Finance"></fieldset>
+    <p class="text-xs italic">… location, employment type, description …</p>
+  </div>`;
+}
+function formShell(skillsHtml, onSave) {
+  return `<div class="card bg-base-100 shadow max-w-2xl mx-auto"><div class="card-body">
+    <div class="badge badge-warning badge-sm">Variant ${VARIANTS[current].key}: ${VARIANTS[current].name}</div>
+    <p class="text-sm opacity-70">${VARIANTS[current].desc}</p>
+    <h1 class="card-title text-2xl mt-2">Edit Data Analyst</h1>
+    ${fixedFields()}
+    <fieldset class="fieldset"><legend class="fieldset-legend">Skills</legend>${skillsHtml}</fieldset>
+    <div class="card-actions justify-end mt-4">
+      <button class="btn btn-ghost" onclick="cancelForm()">Cancel</button>
+      <button class="btn btn-primary" onclick="${onSave}">Save changes</button>
+    </div>
+  </div></div>`;
+}
+function cancelForm() {
+  note(`Cancel clicked. Job not saved. Skills still on the job: ${db.jobSkills.join(", ") || "none"}.`);
+  form = { checked: [...db.jobSkills], newText: "", error: "" };
+  flash("Cancelled — nothing on the job changed.", "info");
+  render();
+}
+function saveChecked() {
+  db.jobSkills = [...form.checked];
+  note(`Job saved with skills: ${db.jobSkills.join(", ") || "none"}.`);
+  flash("Job opening updated.");
+}
+
+// ---------- Variant A: text box submitted with the job ----------
+function renderA() {
+  return formShell(`${checkboxes()}
+    <label class="fieldset-legend mt-3">Add new skills</label>
+    <input class="input w-full ${form.error ? "input-error" : ""}" placeholder="e.g. Tableau, Power BI"
+           value="${esc(form.newText)}" oninput="form.newText=this.value">
+    ${form.error ? `<p class="label text-error whitespace-normal">${esc(form.error)}</p>` : ""}
+    <p class="label text-xs whitespace-normal">Separate names with commas. They're added when you save.</p>`, "saveA()");
+}
+function saveA() {
+  const names = form.newText.split(",").map(s => s.trim()).filter(Boolean);
+  const clash = names.map(n => [n, find(n)]).filter(([, hit]) => hit);
+  if (clash.length) {
+    const [typed, hit] = clash[0];
+    form.error = `“${typed}” already exists as “${hit}”. Tick it in the list above instead.`;
+    note(`Save refused: “${typed}” matches existing skill “${hit}”. Nothing saved (not even the ticks).`);
+    clearFlash(); render(); return;
+  }
+  names.forEach(n => { db.skills.push(n); form.checked.push(n); });
+  if (names.length) note(`Created skills: ${names.join(", ")}.`);
+  form.newText = ""; form.error = "";
+  saveChecked(); render();
+}
+
+// ---------- Variant B: HTMX Add button creates immediately ----------
+function renderB() {
+  return formShell(`${checkboxes()}
+    <div class="join mt-3 w-full">
+      <input id="b-new" class="input join-item w-full ${form.error ? "input-error" : ""}" placeholder="New skill, e.g. Tableau"
+             value="${esc(form.newText)}" oninput="form.newText=this.value" onkeydown="if(event.key==='Enter')addB()">
+      <button class="btn join-item" onclick="addB()">+ Add</button>
+    </div>
+    ${form.error ? `<p class="label text-error whitespace-normal">${esc(form.error)}</p>` : ""}
+    <p class="label text-xs whitespace-normal">The new skill is created right away and ticked. Your other ticks are kept.</p>`, "saveChecked();render()");
+}
+function addB() {
+  const name = form.newText.trim();
+  if (!name) return;
+  const hit = find(name);
+  if (hit) {
+    form.error = `A skill named “${hit}” already exists.`;
+    note(`Add refused: “${name}” matches “${hit}”. (Only the skill list re-rendered.)`);
+  } else {
+    db.skills.push(name); form.checked.push(name); form.newText = ""; form.error = "";
+    note(`HTMX POST: created skill “${name}” — it exists now even if you Cancel. Job not saved yet.`);
+  }
+  render();
+  document.getElementById("b-new")?.focus();
+}
+
+// ---------- Variant C: separate Skills page ----------
+function renderC() {
+  if (view === "skills") return renderSkillsPage();
+  return formShell(`${checkboxes()}
+    <p class="text-sm mt-3">Missing a skill? <a class="link" onclick="goSkills()">Manage skills →</a></p>`, "saveChecked();render()");
+}
+function goSkills() {
+  const unsaved = JSON.stringify([...form.checked].sort()) !== JSON.stringify([...db.jobSkills].sort());
+  note(`Left the job form for the Skills page.${unsaved ? " ⚠ Unsaved tick changes were lost." : ""}`);
+  view = "skills"; form.error = ""; form.newText = ""; clearFlash(); render();
+}
+function renderSkillsPage() {
+  return `<div class="card bg-base-100 shadow max-w-2xl mx-auto"><div class="card-body">
+    <div class="badge badge-warning badge-sm">Variant C: Skills page (/jobs/skills/)</div>
+    <a class="link link-hover text-sm" onclick="backToForm()">← Back to Edit Data Analyst</a>
+    <h1 class="card-title text-2xl">Skills</h1>
+    <div class="join w-full">
+      <input class="input join-item w-full ${form.error ? "input-error" : ""}" placeholder="New skill name"
+             value="${esc(form.newText)}" oninput="form.newText=this.value">
+      <button class="btn btn-primary join-item" onclick="addC()">Add skill</button>
+    </div>
+    ${form.error ? `<p class="label text-error">${esc(form.error)}</p>` : ""}
+    <table class="table mt-2"><thead><tr><th>Name</th><th>Used by</th></tr></thead><tbody>
+      ${sorted().map(s => `<tr><td>${esc(s)}</td><td>${db.jobSkills.includes(s) ? "1 job" : "0 jobs"}</td></tr>`).join("")}
+    </tbody></table>
+  </div></div>`;
+}
+function addC() {
+  const name = form.newText.trim();
+  if (!name) return;
+  const hit = find(name);
+  if (hit) { form.error = `A skill named “${hit}” already exists.`; note(`Add refused: “${name}” matches “${hit}”.`); }
+  else { db.skills.push(name); form.newText = ""; form.error = ""; note(`Created skill “${name}”.`); flash("Skill added."); }
+  render();
+}
+function backToForm() {
+  view = "form"; form = { checked: [...db.jobSkills], newText: "", error: "" };
+  note("Back on the job form (reloaded from saved data). Tick the new skill, then Save."); clearFlash(); render();
+}
+
+// ---------- render ----------
+function render() {
+  const v = VARIANTS[current];
+  document.getElementById("variant-label").textContent = `${v.key} · ${v.name}`;
+  document.getElementById("page").innerHTML = [renderA, renderB, renderC][current]();
+  document.getElementById("st-skills").textContent = sorted().join(", ");
+  document.getElementById("st-job").textContent = db.jobSkills.join(", ") || "none";
+  document.getElementById("st-log").innerHTML = log.map(l => `<li>${esc(l)}</li>`).join("");
+}
+resetState();
+</script>
+</body>
+</html>

@@ -3,9 +3,18 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .forms import JobOpeningForm
-from .models import JobOpening
-from .services import STATUS_FILTERS, JobStatusError, close_job, filter_jobs, reopen_job
+from .forms import JobOpeningForm, SkillForm
+from .models import JobOpening, Skill
+from .services import (
+    STATUS_FILTERS,
+    JobStatusError,
+    SkillInUseError,
+    close_job,
+    delete_skill,
+    filter_jobs,
+    reopen_job,
+    skills_with_job_counts,
+)
 
 JOBS_PER_PAGE = 25
 
@@ -61,6 +70,69 @@ def job_close(request, pk):
 @require_POST
 def job_reopen(request, pk):
     return _change_status(request, pk, reopen_job, "Job reopened. New applications can be added.")
+
+
+@require_POST
+def skill_add(request):
+    """The job form's "+ Add" button (HTMX): create a skill and re-render the skills area.
+
+    The boxes ticked on the form are posted along, so they stay ticked. The job itself is not
+    saved here; that still happens when the job form is submitted.
+    """
+    checked = {int(pk) for pk in request.POST.getlist("skills") if pk.isdigit()}
+    new_name = request.POST.get("new_skill", "")
+    form = SkillForm(data={"name": new_name})
+    if form.is_valid():
+        checked.add(form.save().pk)
+        new_name = ""
+    return render(
+        request,
+        "jobs/partials/skill_picker.html",
+        {
+            "skills": Skill.objects.all(),
+            "checked": checked,
+            "new_skill": new_name,
+            "errors": form.errors.get("name", []),
+        },
+    )
+
+
+def skill_list(request):
+    """The Skills page: every skill with how many jobs use it, plus an "Add skill" form."""
+    form = SkillForm(request.POST or None)
+    if form.is_valid():
+        skill = form.save()
+        messages.success(request, f"Skill “{skill.name}” added.")
+        return redirect("jobs:skill_list")
+    return render(
+        request, "jobs/skill_list.html", {"skills": skills_with_job_counts(), "form": form}
+    )
+
+
+def skill_edit(request, pk):
+    skill = get_object_or_404(Skill, pk=pk)
+    form = SkillForm(request.POST or None, instance=skill)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Skill renamed. The new name shows on every job that uses it.")
+        return redirect("jobs:skill_list")
+    return render(request, "jobs/skill_form.html", {"form": form, "skill": skill})
+
+
+@require_POST
+def skill_delete(request, pk):
+    skill = Skill.objects.filter(pk=pk).first()
+    if skill is None:
+        # A repeated click or a stale page: a friendly note, not an error page.
+        messages.info(request, "That skill was already deleted.")
+        return redirect("jobs:skill_list")
+    try:
+        delete_skill(skill)
+    except SkillInUseError as error:
+        messages.info(request, str(error))
+    else:
+        messages.success(request, f"Skill “{skill.name}” deleted.")
+    return redirect("jobs:skill_list")
 
 
 def _change_status(request, pk, service, success_message):

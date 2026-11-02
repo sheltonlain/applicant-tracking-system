@@ -7,7 +7,10 @@
   <div class="card-body">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <h1 class="card-title text-2xl">Job openings</h1>
-      <a href="{% url 'jobs:create' %}" class="btn btn-sm btn-primary">New job opening</a>
+      <div class="flex gap-2">
+        <a href="{% url 'jobs:skill_list' %}" class="btn btn-sm">Skills</a>
+        <a href="{% url 'jobs:create' %}" class="btn btn-sm btn-primary">New job opening</a>
+      </div>
     </div>
 
     {# Works as a plain GET form without JavaScript; with HTMX it filters as you type or choose.  #}

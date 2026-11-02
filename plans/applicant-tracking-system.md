@@ -136,12 +136,12 @@ Staff can attach skills to a job opening from the job form, and add a new skill 
 
 ### Acceptance criteria
 
-- [ ] `Skill` model and M2M migration exist; skill factory exists
-- [ ] Job form allows selecting skills and adding a new one
-- [ ] A skill differing only in case from an existing one is refused
-- [ ] Renaming a skill changes it on every job that uses it
-- [ ] Deleting a skill in use is blocked with a clear message; an unused skill can be deleted
-- [ ] Job detail shows its skills
+- [x] `Skill` model and M2M migration exist; skill factory exists
+- [x] Job form allows selecting skills and adding a new one
+- [x] A skill differing only in case from an existing one is refused
+- [x] Renaming a skill changes it on every job that uses it
+- [x] Deleting a skill in use is blocked with a clear message; an unused skill can be deleted
+- [x] Job detail shows its skills
 
 ---
 

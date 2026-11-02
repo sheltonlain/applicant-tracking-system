@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Skills · ATS{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mb-2">
+  <a href="{% url 'jobs:list' %}" class="link link-hover text-sm">← All job openings</a>
+</div>
+<div class="card bg-base-100 shadow max-w-3xl mx-auto">
+  <div class="card-body">
+    <h1 class="card-title text-2xl">Skills</h1>
+    <p class="text-sm opacity-70">Skills are shared by every job that uses them, so a rename shows everywhere at once.</p>
+
+    <form method="post" novalidate class="mt-2">
+      {% csrf_token %}
+      <div class="join w-full">
+        <input type="text" name="name" value="{{ form.name.value|default_if_none:'' }}" placeholder="New skill name"
+               aria-label="New skill name" class="input join-item w-full{% if form.name.errors %} input-error{% endif %}">
+        <button type="submit" class="btn btn-primary join-item">Add skill</button>
+      </div>
+      {% for error in form.name.errors %}<p class="label text-error whitespace-normal">{{ error }}</p>{% endfor %}
+    </form>
+
+    <table class="table mt-4">
+      <thead><tr><th>Name</th><th>Used by</th><th class="text-right">Actions</th></tr></thead>
+      <tbody>
+        {% for skill in skills %}
+        <tr>
+          <td>{{ skill.name }}</td>
+          <td>
+            {% if skill.job_count %}
+            {# Click the count to see which jobs use the skill; each link opens the job's edit page. #}
+            <details class="dropdown">
+              <summary class="link cursor-pointer list-none">{{ skill.job_count }} job{{ skill.job_count|pluralize }} ▾</summary>
+              <ul class="dropdown-content menu flex-nowrap bg-base-100 rounded-box shadow z-10 w-80 p-2 max-h-72 overflow-auto">
+                {% for job in skill.jobs.all %}<li><a href="{% url 'jobs:edit' job.pk %}">{{ job }}</a></li>{% endfor %}
+              </ul>
+            </details>
+            {% else %}0 jobs{% endif %}
+          </td>
+          <td>
+            <div class="flex justify-end gap-2">
+              <a href="{% url 'jobs:skill_edit' skill.pk %}" class="btn btn-xs">Rename</a>
+              <form method="post" action="{% url 'jobs:skill_delete' skill.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-xs btn-ghost text-error">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No skills yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,7 +1,46 @@
-from django.db.models import Q
+from django.db.models import Count, ProtectedError, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
 
-from .models import JobOpening
+from .models import JobOpening, Skill
+
+
+def skills_with_job_counts():
+    """Every skill, A to Z, with job_count and its jobs loaded (for the "Used by" list)."""
+    # order_by is required: Django ignores Meta.ordering on queries that count (GROUP BY).
+    return (
+        Skill.objects.annotate(job_count=Count("jobs"))
+        .order_by(Lower("name"))
+        .prefetch_related("jobs")  # one extra query for all skills, not one per skill
+    )
+
+
+class SkillInUseError(Exception):
+    """The skill is attached to at least one job opening, so it can't be deleted."""
+
+
+def delete_skill(skill):
+    """Delete a skill that no job opening uses.
+
+    Raises SkillInUseError (and deletes nothing) while any job uses it, so job openings never
+    silently lose skills. The PROTECT link in JobSkill enforces the same rule in the admin.
+    """
+    job_count = skill.jobs.count()
+    if job_count:
+        raise SkillInUseError(_in_use_message(skill, job_count))
+    try:
+        skill.delete()
+    except ProtectedError:
+        # A job picked up the skill between the count and the delete (e.g. in another tab).
+        raise SkillInUseError(_in_use_message(skill, skill.jobs.count())) from None
+
+
+def _in_use_message(skill, job_count):
+    openings = "job opening" if job_count == 1 else "job openings"
+    return (
+        f"“{skill.name}” is used by {job_count} {openings}, so it can't be deleted. "
+        "Remove it from those jobs first."
+    )
 
 
 class JobStatusError(Exception):

@@ -42,6 +42,12 @@
 
       <dt class="font-semibold">Posted</dt>
       <dd>{{ job.created_at|date:"M j, Y" }}</dd>
+
+      <dt class="font-semibold">Skills</dt>
+      <dd class="flex flex-wrap gap-1">
+        {% for skill in job.skills.all %}<span class="badge badge-outline">{{ skill.name }}</span>
+        {% empty %}<span class="opacity-70">None listed</span>{% endfor %}
+      </dd>
     </dl>
 
     <h2 class="font-semibold mt-6">Description</h2>

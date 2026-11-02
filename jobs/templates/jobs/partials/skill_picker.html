@@ -1,0 +1,25 @@
+{# The job form's skills area. Rendered inside the job form and returned alone by "+ Add". #}
+<div id="skill-picker">
+  <div class="flex flex-wrap gap-x-6 gap-y-2">
+    {% for skill in skills %}
+    <label class="label cursor-pointer gap-2">
+      <input type="checkbox" name="skills" value="{{ skill.pk }}"{% if skill.pk in checked %} checked{% endif %} class="checkbox checkbox-sm">
+      <span>{{ skill.name }}</span>
+    </label>
+    {% empty %}
+    <p class="text-sm opacity-70">No skills yet. Add the first one below.</p>
+    {% endfor %}
+  </div>
+  <div class="join mt-3 w-full">
+    {# Enter adds the skill instead of submitting the whole job form. #}
+    <input type="text" name="new_skill" value="{{ new_skill }}" placeholder="New skill, e.g. Tableau"
+           aria-label="New skill"
+           class="input join-item w-full{% if errors %} input-error{% endif %}"
+           onkeydown="if (event.key === 'Enter') { event.preventDefault(); this.nextElementSibling.click(); }">
+    <button type="button" class="btn join-item"
+            hx-post="{% url 'jobs:skill_add' %}" hx-include="#skill-picker"
+            hx-target="#skill-picker" hx-swap="outerHTML">+ Add</button>
+  </div>
+  {% for error in errors %}<p class="label text-error whitespace-normal">{{ error }}</p>{% endfor %}
+  <p class="label text-xs whitespace-normal">A new skill is created right away and ticked. The job is saved when you click Save.</p>
+</div>

@@ -34,6 +34,7 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - HTMX lists: one results partial serves full and HTMX responses; views return the full page for history-restore requests (HTMX history cache is off in `base.html`); page links use `{% querystring %}`.
 - Uploaded files are never served at a public URL (no `/media/` route); downloads go through login-protected views, and every test gets a temporary `MEDIA_ROOT` from `conftest.py`.
 - `base.html` displays Django messages, so views confirm actions with `messages.success(...)`.
+- Job skills use a custom `JobSkill` link table (PROTECT on skill), so the admin edits them through an inline, not a plain field.
 - Status changes (job close/reopen, later stage moves) only go through services, never through forms or the admin; a stale or repeated action shows a friendly `messages.info(...)`, not an error page.
 
 ## References
