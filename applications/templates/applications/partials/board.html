@@ -1,6 +1,8 @@
 {# The whole board section: every column and count. A move swaps this in place (HTMX), so both #}
 {# columns a card leaves and joins, and their counts, are always up to date.                     #}
 <div id="board">
+  {# Inside #board, so a move that closes the last active application also removes the warning. #}
+  {% include "applications/partials/closed_job_warning.html" with show_board_link=False %}
   {% if error %}
   <div role="alert" class="alert alert-info mb-4"><span>{{ error }}</span></div>
   {% endif %}

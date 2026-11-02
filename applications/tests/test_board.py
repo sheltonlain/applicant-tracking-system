@@ -162,6 +162,36 @@ def test_moves_work_on_a_closed_jobs_board(logged_in_client):
     assert application.stage == Stage.FINAL_REVIEW
 
 
+CLOSED_JOB_WARNING = 'id="closed-job-warning"'
+
+
+def test_closed_jobs_board_warns_until_the_last_active_application_is_closed(logged_in_client):
+    job = JobOpeningFactory(status=JobOpening.Status.CLOSED)
+    last_active = ApplicationFactory(job=job, stage=Stage.INTERVIEW)
+    ApplicationFactory(job=job, stage=Stage.HIRED)
+    # An open job with active applications is normal: no warning.
+    open_job = ApplicationFactory(stage=Stage.INTERVIEW).job
+
+    board = logged_in_client.get(reverse("applications:board", args=[job.pk])).content.decode()
+    open_board = logged_in_client.get(reverse("applications:board", args=[open_job.pk]))
+
+    assert CLOSED_JOB_WARNING in board
+    assert "1 active application" in board
+    assert CLOSED_JOB_WARNING not in open_board.content.decode()
+
+    # Rejecting the last active application redraws the board (HTMX) without the warning.
+    response = logged_in_client.post(
+        reverse("applications:move", args=[last_active.pk]),
+        {"to_stage": Stage.REJECTED, "reason": "Position filled"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert 'id="board"' in html
+    assert CLOSED_JOB_WARNING not in html
+
+
 def test_move_refuses_get(logged_in_client):
     application = ApplicationFactory(stage=Stage.APPLIED)
 

@@ -45,6 +45,8 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - Reject, Withdraw, Reopen, and Mark Hired never post straight from a card: they load a dialog from `GET /applications/<pk>/move/dialog/?to_stage=…` into the `#move-dialog` slot, which sits inside `#board` so redrawing the board after a move also closes the dialog.
 - A missing reason raises `ReasonRequiredError` (a `MoveError` subclass); for HTMX the move view re-renders only the dialog with the error (`retarget`/`reswap` to `#move-dialog`) and leaves the board untouched.
 - A card's "closed from" label is read off its reopen move from `allowed_moves()`, never a separate lookup, so the label and the Reopen button always agree.
+- The job detail page lazy-loads its closed-job warning from `applications` (`applications:job_warning`) via HTMX; the board and job page share `applications/partials/closed_job_warning.html`.
+- The board's closed-job warning lives inside `#board`, so every move redraws it, and its count is taken from the board's own active columns.
 
 ## References
 

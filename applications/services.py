@@ -1,9 +1,10 @@
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q
 
 from jobs.models import JobOpening
 
 from .models import Application, StageChange
-from .stages import ACTIVE_STAGES, FINAL_STAGES, allowed_moves, find_move
+from .stages import ACTIVE_STAGES, CLOSED_STAGES, FINAL_STAGES, allowed_moves, find_move
 
 
 class ApplicationError(Exception):
@@ -121,6 +122,51 @@ def board_columns(job):
     closed_cards = [card for stage in FINAL_STAGES for card in by_stage[stage]]
     columns.append({"key": "closed", "label": "Closed", "cards": closed_cards})
     return columns
+
+
+def open_job_summaries():
+    """One summary per open job for the dashboard, newest job first.
+
+    Each summary has the job, `stage_counts` (key, label, and count for each active stage, in
+    order), `hired`, and `closed` (Rejected plus Withdrawn). Jobs with no applications get zeros.
+    """
+    jobs = JobOpening.objects.filter(status=JobOpening.Status.OPEN)
+    # One grouped query for every open job's counts, instead of one query per job and stage.
+    counts = {}
+    for row in (
+        Application.objects.filter(job__in=jobs).values("job_id", "stage").annotate(n=Count("pk"))
+    ):
+        counts[(row["job_id"], row["stage"])] = row["n"]
+    return [
+        {
+            "job": job,
+            "stage_counts": [
+                {"key": stage.value, "label": stage.label, "count": counts.get((job.pk, stage), 0)}
+                for stage in ACTIVE_STAGES
+            ],
+            "hired": counts.get((job.pk, Application.Stage.HIRED), 0),
+            "closed": sum(counts.get((job.pk, stage), 0) for stage in CLOSED_STAGES),
+        }
+        for job in jobs
+    ]
+
+
+def jobs_needing_attention():
+    """Closed jobs that still have at least one application in an active stage.
+
+    Each item has the job and `active`, how many of its applications are still active.
+    """
+    jobs = (
+        JobOpening.objects.filter(status=JobOpening.Status.CLOSED)
+        .annotate(active=Count("applications", filter=Q(applications__stage__in=ACTIVE_STAGES)))
+        .filter(active__gt=0)
+    )
+    return [{"job": job, "active": job.active} for job in jobs]
+
+
+def active_application_count(job):
+    """How many of the job's applications are still in an active stage."""
+    return job.applications.filter(stage__in=ACTIVE_STAGES).count()
 
 
 def _stage_label(stage):

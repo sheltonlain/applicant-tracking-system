@@ -234,11 +234,11 @@ Replace the placeholder home page with the dashboard: one card per open job show
 
 ### Acceptance criteria
 
-- [ ] Each open job has a card with correct per-stage counts and hired/closed totals
-- [ ] Cards link to the job's pipeline board
-- [ ] "Needs attention" lists exactly the closed jobs with at least one active application
-- [ ] A closed job's board shows a warning when active applications remain
-- [ ] Dashboard requires login
+- [x] Each open job has a card with correct per-stage counts and hired/closed totals
+- [x] Cards link to the job's pipeline board
+- [x] "Needs attention" lists exactly the closed jobs with at least one active application
+- [x] A closed job's board shows a warning when active applications remain
+- [x] Dashboard requires login
 
 ---
 

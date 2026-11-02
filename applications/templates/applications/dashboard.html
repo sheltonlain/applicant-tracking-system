@@ -3,10 +3,60 @@
 {% block title %}Dashboard · ATS{% endblock %}
 
 {% block content %}
-<div class="card bg-base-100 shadow">
-  <div class="card-body">
-    <h1 class="card-title text-2xl">Dashboard</h1>
-    <p>Job pipelines will appear here.</p>
+<h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+
+<section aria-labelledby="open-jobs-heading">
+  <h2 id="open-jobs-heading" class="text-lg font-semibold mb-2">Open jobs</h2>
+  <div class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+    {% for summary in summaries %}
+    {% with job=summary.job %}
+    {# The whole card is a link to the job's pipeline board. #}
+    <a href="{% url 'applications:board' job.pk %}" id="job-card-{{ job.pk }}"
+       class="card bg-base-100 shadow hover:shadow-md transition-shadow">
+      <div class="card-body">
+        <h3 class="card-title">{{ job.title }}</h3>
+        <p class="text-sm opacity-70">{{ job.department }} · {{ job.location }}</p>
+        <div class="grid grid-cols-5 gap-1 text-center mt-2">
+          {% for stage in summary.stage_counts %}
+          <div data-stage="{{ stage.key }}" data-count="{{ stage.count }}">
+            <div class="text-xl font-bold">{{ stage.count }}</div>
+            <div class="text-xs opacity-70">{{ stage.label }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="flex gap-2 mt-2">
+          <span class="badge badge-success" data-total="hired" data-count="{{ summary.hired }}">Hired {{ summary.hired }}</span>
+          <span class="badge badge-neutral" data-total="closed" data-count="{{ summary.closed }}">Closed {{ summary.closed }}</span>
+        </div>
+      </div>
+    </a>
+    {% endwith %}
+    {% empty %}
+    <p class="opacity-70">No open jobs. <a href="{% url 'jobs:create' %}" class="link">Create a job opening</a>.</p>
+    {% endfor %}
   </div>
-</div>
+</section>
+
+<section id="needs-attention" aria-labelledby="needs-attention-heading" class="mt-8">
+  <h2 id="needs-attention-heading" class="text-lg font-semibold mb-2">Needs attention</h2>
+  {% if needs_attention %}
+  <p class="text-sm opacity-70 mb-2">Closed jobs that still have active applications.</p>
+  <ul class="bg-base-100 rounded-box shadow divide-y divide-base-200">
+    {% for item in needs_attention %}
+    <li class="flex flex-wrap items-center justify-between gap-2 p-3">
+      <div>
+        <span class="font-semibold">{{ item.job.title }}</span>
+        <span class="opacity-70">{{ item.job.department }} · {{ item.job.location }}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge badge-warning">{{ item.active }} active</span>
+        <a href="{% url 'applications:board' item.job.pk %}" class="btn btn-sm">Open board</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="opacity-70">Nothing needs attention: every closed job is finished.</p>
+  {% endif %}
+</section>
 {% endblock %}

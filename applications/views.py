@@ -12,16 +12,40 @@ from .services import (
     ApplicationError,
     MoveError,
     ReasonRequiredError,
+    active_application_count,
     board_columns,
     create_application,
+    jobs_needing_attention,
     move_application,
+    open_job_summaries,
 )
 from .stages import find_move
 
 
 def dashboard(request):
-    """Home page. A placeholder until the dashboard is built in Phase 11."""
-    return render(request, "applications/dashboard.html")
+    """Home page: a card of stage counts per open job, then closed jobs that need attention."""
+    return render(
+        request,
+        "applications/dashboard.html",
+        {"summaries": open_job_summaries(), "needs_attention": jobs_needing_attention()},
+    )
+
+
+def job_warning(request, job_pk):
+    """The closed-job reminder on a job's detail page (empty when there is nothing to finish).
+
+    The job page lazy-loads it with HTMX, because the jobs app must not import from the
+    applications app.
+    """
+    job = get_object_or_404(JobOpening, pk=job_pk)
+    if not request.htmx:
+        # The warning is only a piece of a page; a direct visit gets the whole job page.
+        return redirect(job)
+    return render(
+        request,
+        "applications/partials/closed_job_warning.html",
+        {"job": job, "active_count": active_application_count(job), "show_board_link": True},
+    )
 
 
 def candidate_applications(request, candidate_pk):
@@ -139,4 +163,7 @@ def _render_move_dialog(request, application, move, error=None):
 
 
 def _board_context(job, error=None):
-    return {"job": job, "columns": board_columns(job), "error": error}
+    columns = board_columns(job)
+    # Counted off the drawn columns, so the closed-job warning always agrees with the board.
+    active_count = sum(len(column["cards"]) for column in columns if column["key"] != "closed")
+    return {"job": job, "columns": columns, "active_count": active_count, "error": error}

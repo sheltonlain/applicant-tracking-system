@@ -1,0 +1,13 @@
+{# Reminder that a closed job still has unfinished applications. Shared by the board and the job #}
+{# detail page. Needs `job` and `active_count`; `show_board_link` adds a link to the board.     #}
+{% if not job.is_open and active_count %}
+<div id="closed-job-warning" role="alert" class="alert alert-warning mb-4">
+  <span>
+    This job is closed but still has {{ active_count }} active application{{ active_count|pluralize }}.
+    Move {{ active_count|pluralize:"it,them" }} to Hired, Rejected, or Withdrawn to finish.
+  </span>
+  {% if show_board_link %}
+  <a href="{% url 'applications:board' job.pk %}" class="btn btn-sm">Open board</a>
+  {% endif %}
+</div>
+{% endif %}

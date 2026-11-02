@@ -28,6 +28,30 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-02 — Implemented Phase 11: home dashboard and closed-job reminders
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 11`
+2. yes, go ahead with those three
+3. yes, make it pass
+4. yes, move on to behavior 2
+5. yes, make it pass
+6. yes, move on to behavior 3
+7. yes, make it pass
+8. yes, continue with the rest of the phase
+9. yes, manual verification passed, verify the acceptance criteria
+10. yes, add those lines to CLAUDE.md, then commit and push
+
+### Summary
+- **Outcome:** Replaced the placeholder home page with the dashboard. It has one card per open job, each linking to its board, with counts for the five active stages plus Hired and Closed (Rejected + Withdrawn) badges. Below the cards is a "Needs attention" list of closed jobs with active applications, each showing its active count and an "Open board" button. New services: `open_job_summaries()` (one grouped count query), `jobs_needing_attention()`, and `active_application_count()`. A closed job's board shows a warning inside `#board`, so a move that closes the last active application removes it. The count comes from the board's own active columns. The job detail page lazy-loads the same warning partial from `applications:job_warning` via HTMX, so `jobs` still imports nothing from `applications`. TDD covered three behaviors: the per-stage counts and totals, the exact "Needs attention" set, and the board warning disappearing after the last active application is closed. Normal tests cover the dashboard page, card links, empty states, the lazy-loaded job warning, and login. All 5 acceptance criteria are ticked, with 260 tests passing. Two architecture notes were added to CLAUDE.md.
+- **Deviations:**
+  - At the RED steps, the agent checked two interpretations with the user: "hired/closed totals" as two separate numbers, and "Needs attention" entries carrying an active count. The user accepted both without changes.
+  - The job-detail warning isn't an acceptance criterion, but it was built because the phase's "What to build" asks for it.
+- **Sideways:**
+  - The first RED for behavior 1 failed with a `KeyError`, not an assertion. Before asking for approval, the agent changed the test to assert the exact set of open jobs first.
+  - While passing behavior 2, the agent briefly added `active_application_count()`, which wasn't needed yet. It removed the function before running the tests and added it back later for the job-detail warning.
+  - The first job-detail wrapper used `outerHTML`, which would have dropped the page-width container. It was switched to `innerHTML` before testing. A view-test assertion that could never fail was also removed.
+
 ## 2026-11-02 — Implemented Phase 10: application detail timeline
 
 ### Prompts
