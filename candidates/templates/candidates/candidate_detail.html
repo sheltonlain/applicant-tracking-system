@@ -23,6 +23,24 @@
 
     <h2 class="font-semibold mt-6">Notes</h2>
     <p class="whitespace-pre-line">{{ candidate.notes|default:"No notes yet." }}</p>
+
+    <h2 class="font-semibold mt-6">Résumé</h2>
+    {% if candidate.resume %}
+    <p><a class="link" href="{% url 'candidates:resume' candidate.pk %}">Download résumé</a></p>
+    {% else %}
+    <p>No résumé uploaded.</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'candidates:resume_upload' candidate.pk %}"
+          class="flex flex-wrap items-start gap-2 mt-2" novalidate>
+      {% csrf_token %}
+      <div>
+        <input type="file" name="{{ resume_form.resume.html_name }}" accept=".pdf,.docx"
+               class="file-input file-input-sm{% if resume_form.resume.errors %} file-input-error{% endif %}">
+        {% for error in resume_form.resume.errors %}<p class="text-error text-sm mt-1">{{ error }}</p>{% endfor %}
+        <p class="text-xs mt-1 opacity-70">PDF or DOCX, up to 5 MB.{% if candidate.resume %} Uploading replaces the current résumé.{% endif %}</p>
+      </div>
+      <button type="submit" class="btn btn-sm">{% if candidate.resume %}Replace{% else %}Upload{% endif %}</button>
+    </form>
   </div>
 </div>
 {% endblock %}

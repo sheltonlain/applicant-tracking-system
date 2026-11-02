@@ -32,6 +32,8 @@ An internal, staff-only Django web app for tracking candidates, job openings, an
 - Django's built-in auth and default User model; `LoginRequiredMiddleware` makes every view require login except login and password-reset pages.
 - Stage, source, and other fixed lists are stored as code-defined choices.
 - HTMX lists: one results partial serves full and HTMX responses; views return the full page for history-restore requests (HTMX history cache is off in `base.html`); page links use `{% querystring %}`.
+- Uploaded files are never served at a public URL (no `/media/` route); downloads go through login-protected views, and every test gets a temporary `MEDIA_ROOT` from `conftest.py`.
+- `base.html` displays Django messages, so views confirm actions with `messages.success(...)`.
 
 ## References
 

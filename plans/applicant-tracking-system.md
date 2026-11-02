@@ -98,12 +98,12 @@ Staff can upload a résumé (PDF or DOCX, up to 5 MB) from the candidate page. F
 
 ### Acceptance criteria
 
-- [ ] PDF and DOCX under 5 MB are accepted
-- [ ] Wrong file type or a file over 5 MB is rejected with a clear message
-- [ ] Two candidates uploading the same filename get distinct stored files
-- [ ] Replacing a résumé removes the old file from storage
-- [ ] The download view requires login; anonymous requests are redirected
-- [ ] Tests use a temporary media folder and leave no files behind
+- [x] PDF and DOCX under 5 MB are accepted
+- [x] Wrong file type or a file over 5 MB is rejected with a clear message
+- [x] Two candidates uploading the same filename get distinct stored files
+- [x] Replacing a résumé removes the old file from storage
+- [x] The download view requires login; anonymous requests are redirected
+- [x] Tests use a temporary media folder and leave no files behind
 
 ---
 

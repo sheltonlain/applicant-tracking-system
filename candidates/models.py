@@ -1,5 +1,16 @@
+import uuid
+from pathlib import Path
+
 from django.db import models
 from django.urls import reverse
+
+
+def resume_upload_to(candidate, filename):
+    """Store each résumé under a random name, keeping only the extension.
+
+    Two uploads can never collide, and names like "Jane_Doe_Resume.pdf" never end up on disk.
+    """
+    return f"resumes/{uuid.uuid4().hex}{Path(filename).suffix.lower()}"
 
 
 class Candidate(models.Model):
@@ -12,6 +23,7 @@ class Candidate(models.Model):
     phone = models.CharField(max_length=50, blank=True)
     url = models.URLField("LinkedIn / portfolio URL", blank=True)
     notes = models.TextField(blank=True)
+    resume = models.FileField("Résumé", upload_to=resume_upload_to, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

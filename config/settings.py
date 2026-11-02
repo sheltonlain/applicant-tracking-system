@@ -84,6 +84,10 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "assets"]
 TAILWIND_CLI_USE_DAISY_UI = True
 
+# Uploaded files (résumés). Never served at a public URL: downloads go through a
+# login-protected view, so there is deliberately no MEDIA_URL route in config/urls.py.
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Email: printed to the terminal during development (password reset).

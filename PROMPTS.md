@@ -28,6 +28,39 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 4: résumés
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 4`
+2. Yes
+3. yes, make it pass
+4. How difficult would it be to add the contents check?
+5. yes, add the contents check
+6. yes, make it pass
+7. yes, move on to behavior 2
+8. yes, make it pass
+9. Can you elaborate on the edge case? I don't want my web app showing errors -- only friendly messages about what went wrong.
+10. yes, add both failure changes and the success message
+11. yes, go ahead with that version of behavior 3
+12. yes, make it pass
+13. yes, go ahead
+14. everything checked out, go ahead
+15. Add a short sentence about each line. After that, proceed with PROMPTS.md, commit, and push
+
+### Summary
+- **Outcome:** Candidates can have one résumé (PDF or DOCX, up to 5 MB), uploaded from the detail page and downloaded through a login-protected view at `/candidates/<pk>/resume/`. Validation checks the extension, the size, and the file's contents (PDF header / DOCX zip layout). Files are stored under `media/resumes/` with random names; replacing a résumé deletes the old file through the `replace_resume` service. TDD covered three behaviors: rejection with clear messages, replace-and-delete, and distinct random file names. `base.html` gained a messages area for success messages. All tests use a temporary media folder (autouse fixture). 62 tests pass; all six acceptance criteria ticked. Two lines added to `CLAUDE.md` (no public media URL / temp media in tests; messages in `base.html`).
+- **Deviations:**
+  - The agent first offered an extension-only type check; the user asked how hard a contents check would be and then asked for it.
+  - The user asked about the "delete fails" edge case and asked for friendly messages instead of error pages. Added: a failed old-file delete still counts as success (logged as a warning); a failed save shows "We couldn't save the résumé. Please try again." and keeps the old résumé; success messages "Résumé uploaded." / "Résumé replaced.".
+  - Behavior 3 was reworded with the user's approval: Django already avoids name collisions, so the test also checks that stored names are random (the original filename is not on disk), which gave a real RED.
+- **Sideways:**
+  - A Python edit script wrote `é` in the Windows default encoding, breaking `settings.py`; caught by a SyntaxError and re-encoded as UTF-8. Later edits set UTF-8 explicitly.
+  - The random-filename code was written during scaffolding, ahead of behavior 3's test; it was reverted so the test could fail first.
+  - Behavior 2's first fix still failed: a `ModelForm` puts the new file on the candidate during validation, so the old name was lost. `ResumeForm` became a plain `Form`.
+  - A first draft of the behavior 3 test had a broken last line; rewritten before running.
+  - A detail-page test matched the download URL inside the upload URL; fixed by checking for the `href="..."` attribute.
+  - The Tailwind message classes were first built from pieces (`alert-{{ tag }}`), which Tailwind can't detect; rewritten with full class names.
+
 ## 2026-11-01 — Added the HTMX list pattern to CLAUDE.md after Phase 3
 
 ### Prompts

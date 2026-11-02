@@ -32,3 +32,10 @@ def staff_user(db):
 def logged_in_client(client, staff_user):
     client.force_login(staff_user)
     return client
+
+
+@pytest.fixture(autouse=True)
+def temp_media_root(settings, tmp_path):
+    """Every test stores uploads in its own temporary folder, so no files are left behind."""
+    settings.MEDIA_ROOT = tmp_path / "media"
+    return settings.MEDIA_ROOT

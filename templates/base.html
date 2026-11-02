@@ -38,6 +38,16 @@
   {% endif %}
 
   <main class="container mx-auto p-6">
+    {% if messages %}
+    <div class="max-w-3xl mx-auto mb-4 space-y-2">
+      {% for message in messages %}
+      {# Class names are written out in full so Tailwind can find them when building the CSS. #}
+      <div role="alert" class="alert {% if message.level_tag == 'success' %}alert-success{% elif message.level_tag == 'warning' %}alert-warning{% elif message.level_tag == 'error' %}alert-error{% else %}alert-info{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>
