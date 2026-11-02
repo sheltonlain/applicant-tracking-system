@@ -1,0 +1,35 @@
+<div id="job-results">
+  <table class="table">
+    <thead>
+      <tr><th>Title</th><th>Department</th><th>Location</th><th>Type</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for job in page_obj %}
+      <tr>
+        <td><a class="link" href="{{ job.get_absolute_url }}">{{ job.title }}</a></td>
+        <td>{{ job.department }}</td>
+        <td>{{ job.location }}</td>
+        <td>{{ job.get_employment_type_display }}</td>
+        <td>
+          {% if job.is_open %}<span class="badge badge-success">Open</span>
+          {% else %}<span class="badge badge-neutral">Closed</span>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No job openings found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page_obj.has_other_pages %}
+  <div class="join mt-4">
+    {% if page_obj.has_previous %}
+    <a class="join-item btn btn-sm" href="{% querystring page=page_obj.previous_page_number %}">« Previous</a>
+    {% endif %}
+    <span class="join-item btn btn-sm btn-disabled">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="join-item btn btn-sm" href="{% querystring page=page_obj.next_page_number %}">Next »</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

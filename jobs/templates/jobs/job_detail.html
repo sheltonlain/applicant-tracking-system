@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.title }} · ATS{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mb-2">
+  <a href="{% url 'jobs:list' %}" class="link link-hover text-sm">← All job openings</a>
+</div>
+<div class="card bg-base-100 shadow max-w-3xl mx-auto">
+  <div class="card-body">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="card-title text-2xl">{{ job.title }}</h1>
+        <p class="opacity-70">{{ job.department }} · {{ job.location }}</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-sm">Edit</a>
+        {# One toggle button: an open job can only be closed, a closed job can only be reopened. #}
+        {% if job.is_open %}
+        <form method="post" action="{% url 'jobs:close' job.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-warning">Close job</button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'jobs:reopen' job.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-success">Reopen job</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 mt-4">
+      <dt class="font-semibold">Status</dt>
+      <dd>
+        {% if job.is_open %}<span class="badge badge-success">Open</span>
+        {% else %}<span class="badge badge-neutral">Closed</span> since {{ job.closed_at|date:"M j, Y, g:i A" }}{% endif %}
+      </dd>
+
+      <dt class="font-semibold">Employment type</dt>
+      <dd>{{ job.get_employment_type_display }}</dd>
+
+      <dt class="font-semibold">Posted</dt>
+      <dd>{{ job.created_at|date:"M j, Y" }}</dd>
+    </dl>
+
+    <h2 class="font-semibold mt-6">Description</h2>
+    <p class="whitespace-pre-line">{{ job.description }}</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Job openings · ATS{% endblock %}
+
+{% block content %}
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="card-title text-2xl">Job openings</h1>
+      <a href="{% url 'jobs:create' %}" class="btn btn-sm btn-primary">New job opening</a>
+    </div>
+
+    {# Works as a plain GET form without JavaScript; with HTMX it filters as you type or choose.  #}
+    {# hx-include sends both the search and the status, so one never resets the other.          #}
+    <form method="get" action="{% url 'jobs:list' %}" class="mt-4 flex flex-wrap gap-2" role="search">
+      <label class="input w-full max-w-md">
+        <span class="sr-only">Search job openings</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by title, department, or location"
+               autocomplete="off"
+               hx-get="{% url 'jobs:list' %}"
+               hx-trigger="input changed delay:500ms, search"
+               hx-include="closest form"
+               hx-target="#job-results"
+               hx-swap="outerHTML"
+               hx-push-url="true">
+      </label>
+      <label class="select w-auto">
+        <span class="label">Status</span>
+        <select name="status"
+                hx-get="{% url 'jobs:list' %}"
+                hx-trigger="change"
+                hx-include="closest form"
+                hx-target="#job-results"
+                hx-swap="outerHTML"
+                hx-push-url="true">
+          {% for value, label in status_filters.items %}
+          <option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit" class="btn">Filter</button></noscript>
+    </form>
+
+    {% include "jobs/partials/job_results.html" %}
+  </div>
+</div>
+{% endblock %}

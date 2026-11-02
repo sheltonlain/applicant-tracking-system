@@ -6,7 +6,15 @@
 {% for field in form %}
 <fieldset class="fieldset">
   <legend class="fieldset-legend">{{ field.label }}</legend>
-  {% if field.field.widget.input_type %}
+  {% if field.field.widget.input_type == "select" %}
+  <select name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+          class="select w-full{% if field.errors %} select-error{% endif %}"
+          {% if field.field.required %}required{% endif %}>
+    {% for value, label in field.field.choices %}
+    <option value="{{ value }}"{% if value|stringformat:"s" == field.value|default_if_none:""|stringformat:"s" %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% elif field.field.widget.input_type %}
   <input type="{{ field.field.widget.input_type }}" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
          class="input w-full{% if field.errors %} input-error{% endif %}"
          {% if field.value and field.field.widget.input_type != "password" %}value="{{ field.value }}"{% endif %}

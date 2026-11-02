@@ -28,6 +28,35 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-11-01 — Implemented Phase 5: job openings with close and reopen
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Phase 5`
+2. For the decisions you proposed -- All jobs should either be open or closed. There should never be an unknown status. The button that closes and reopens jobs should toggle back and forth. You should not have the option to close a job that is already closed or open a job that is already open. All other suggestions are fine.
+3. yes, make it pass
+4. yes, move on to behavior 2
+5. yes, make it pass. One thing to note -- I do not want an error to display. Only a friendly message.
+6. yes, move on to behavior 3
+7. yes, make it pass
+8. Can we make it so that searchin for a department or location also yields results?
+9. yes, make it pass
+10. yes, continue with the rest of the phase
+11. everything checked out, go ahead
+12. You can add that. Before we update PROMPTS.md, I do want to make a quick addition. When a job is created, I want a seamless way to get back to the full job list through the new job's  page. Right now, you just land on the created job card, and it is a bit awkward to navigate from there.
+13. it works, go ahead with PROMPTS.md, commit, and push
+
+### Summary
+- **Outcome:** Staff can create, view, and edit job openings at `/jobs/`. Titles need not be unique, and every job is labeled "Title — Department · Location". The job list is newest first, 25 per page, with a status dropdown (Open by default; Open/Closed/All in the URL) and search as you type, using the candidate-list HTMX pattern. The detail page has one Close/Reopen toggle button. `close_job` / `reopen_job` in `jobs/services.py` set and clear `closed_at` and refuse a repeated action; the views turn that refusal into a friendly `messages.info` note. Status is not on the edit form and is read-only in the admin. The shared form partial gained dropdown support; the navbar gained a Jobs link; the detail page gained a "← All job openings" link. TDD covered close, reopen, the status filter combined with search, and (added) department/location search. 94 tests pass; all six acceptance criteria ticked. One line added to `CLAUDE.md` (status changes only through services; stale actions get a friendly message).
+- **Deviations:**
+  - The agent proposed "an unknown status falls back to Open". The user read this as a job status and said jobs must only be Open or Closed. The agent explained it meant only a hand-edited `?status=` value in the list URL; job status was always limited to two choices.
+  - The agent proposed that closing an already-closed job silently does nothing. The user asked instead for a single toggle button and no option to repeat an action, so the services refuse a repeat and the views show a friendly message.
+  - The user asked that no error ever display, only a friendly message.
+  - The user extended search from title only (PRD story 40) to title, department, or location; done with its own RED/GREEN test.
+  - After acceptance, the user asked for a link from a new job's page back to the job list.
+- **Sideways:**
+  - Behavior 3's first test run failed with `NoReverseMatch` (no job detail page yet), not on an assertion; a basic detail view was added before getting a real RED.
+  - Employment type was the first dropdown in the app, and the shared form partial would have drawn it as `<input type="select">`; a select branch was added before the job form was used.
+
 ## 2026-11-01 — Implemented Phase 4: résumés
 
 ### Prompts

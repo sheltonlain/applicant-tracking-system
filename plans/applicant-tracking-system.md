@@ -117,12 +117,12 @@ Staff can create, view, and edit job openings. Titles need not be unique; depart
 
 ### Acceptance criteria
 
-- [ ] `JobOpening` model and migration exist; job factory exists
-- [ ] Two jobs with the same title can be created
-- [ ] Department and location appear next to the title in list and detail
-- [ ] List is newest first, paginated at 25; status filter and live search swap only the results and update the URL
-- [ ] Closing sets status to Closed and records closed-at; reopening sets Open and clears closed-at
-- [ ] Close/reopen logic lives in the jobs service layer and is covered by service tests
+- [x] `JobOpening` model and migration exist; job factory exists
+- [x] Two jobs with the same title can be created
+- [x] Department and location appear next to the title in list and detail
+- [x] List is newest first, paginated at 25; status filter and live search swap only the results and update the URL
+- [x] Closing sets status to Closed and records closed-at; reopening sets Open and clears closed-at
+- [x] Close/reopen logic lives in the jobs service layer and is covered by service tests
 
 ---
 
